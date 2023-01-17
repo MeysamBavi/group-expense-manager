@@ -6,6 +6,42 @@ import (
 	"github.com/MeysamBavi/group-expense-manager/internal/model"
 )
 
+var (
+	offsetIsEnable = true
+	rowOffset      = 0
+	colOffset      = 0
+	rowOffsetTemp  = 0
+	colOffsetTemp  = 0
+)
+
+func setOffsets(r, c int) {
+	rowOffset = r
+	colOffset = c
+	offsetIsEnable = true
+}
+
+func resetOffsets() {
+	rowOffset = 0
+	colOffset = 0
+}
+
+func disableOffsets() {
+	if !offsetIsEnable {
+		return
+	}
+	rowOffsetTemp, colOffsetTemp = rowOffset, colOffset
+	resetOffsets()
+	offsetIsEnable = false
+}
+
+func enableOffsets() {
+	if offsetIsEnable {
+		return
+	}
+	setOffsets(rowOffsetTemp, colOffsetTemp)
+	offsetIsEnable = true
+}
+
 func panicE(err error) {
 	if err != nil {
 		panic(err)
@@ -13,6 +49,9 @@ func panicE(err error) {
 }
 
 func cell(rowN, colN int) string {
+	rowN += rowOffset
+	colN += colOffset
+
 	if rowN <= 0 || colN <= 0 {
 		panic(errors.New("row number and column number must be positive"))
 	}
@@ -52,5 +91,7 @@ func column(colN int) string {
 }
 
 func memberNameRef(id model.MID) string {
+	disableOffsets()
+	defer enableOffsets()
 	return fmt.Sprintf("%s!%s", membersSheet, cell(int(id+2), 1))
 }
