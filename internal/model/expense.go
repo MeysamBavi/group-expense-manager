@@ -3,7 +3,7 @@ package model
 import "time"
 
 type Share struct {
-	PersonID    MID
+	MemberID    MID
 	ShareWeight uint8
 }
 
