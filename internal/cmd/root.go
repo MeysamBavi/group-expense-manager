@@ -2,25 +2,22 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/MeysamBavi/group-expense-manager/internal/cmd/message"
 	"github.com/spf13/cobra"
 	"os"
 )
 
-const message = `"No regret for the confidence betrayed
-No more hiding in shadow
-Cause I won't wait for the debt to be repaid
-Time has come for you..."`
+var rootCmd = &cobra.Command{
+	Use:   "gem",
+	Short: "Spreadsheet based program for managing group expenses",
+}
 
-func ExecuteRoot() {
-	fmt.Println(message)
-	fmt.Println()
+func init() {
+	message.AddToRoot(rootCmd)
+}
 
-	root := &cobra.Command{
-		Use:   "gem",
-		Short: "Spreadsheet based program for managing group expenses",
-	}
-
-	if err := root.Execute(); err != nil {
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
 		fmt.Printf("failed to execute root command: %v\n", err)
 		os.Exit(1)
 	}
