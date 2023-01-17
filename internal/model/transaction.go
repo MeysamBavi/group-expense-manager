@@ -3,8 +3,8 @@ package model
 import "time"
 
 type Transaction struct {
-	PayerID    pid
-	ReceiverID pid
+	PayerID    MID
+	ReceiverID MID
 	Amount     Amount
 	Time       time.Time
 }

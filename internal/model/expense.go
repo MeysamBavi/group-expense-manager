@@ -3,14 +3,14 @@ package model
 import "time"
 
 type Share struct {
-	PersonID    pid
+	PersonID    MID
 	ShareWeight uint8
 }
 
 type Expense struct {
 	Title   string
 	Time    time.Time
-	PayerID pid
+	PayerID MID
 	Amount  Amount
 	Shares  []Share
 }

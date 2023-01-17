@@ -1,9 +1,9 @@
 package model
 
-type pid uint32
+type MID uint32
 
-type Person struct {
-	ID         pid
+type Member struct {
+	ID         MID
 	Name       string
 	CardNumber string
 }
