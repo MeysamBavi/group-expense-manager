@@ -29,18 +29,6 @@ type Manager struct {
 	styleIndices map[string]int
 }
 
-func (m *Manager) SaveAs(name string) error {
-	return m.file.SaveAs(name)
-}
-
-func (m *Manager) MembersCount() int {
-	return len(m.members)
-}
-
-func (m *Manager) Member(id model.MID) *model.Member {
-	return m.members[id]
-}
-
 func NewManager(members []*model.Member) *Manager {
 	file := excelize.NewFile()
 
@@ -57,6 +45,25 @@ func NewManager(members []*model.Member) *Manager {
 	return m
 }
 
+func LoadManager(fileName string) (*Manager, error) {
+	// TODO
+	//file := excelize.OpenFile(fileName)
+
+	return nil, nil
+}
+
+func (m *Manager) SaveAs(name string) error {
+	return m.file.SaveAs(name)
+}
+
+func (m *Manager) MembersCount() int {
+	return len(m.members)
+}
+
+func (m *Manager) Member(id model.MID) *model.Member {
+	return m.members[id]
+}
+
 func (m *Manager) SetStyle(key string, value *excelize.Style) {
 	si, _ := m.file.NewStyle(value)
 	m.styleIndices[key] = si
@@ -68,6 +75,10 @@ func (m *Manager) GetStyle(key string) int {
 
 func (m *Manager) GetSheetIndex(name string) int {
 	return m.sheetIndices[name]
+}
+
+func (m *Manager) UpdateDebtors() {
+	// TODO
 }
 
 func createStyles(m *Manager) {

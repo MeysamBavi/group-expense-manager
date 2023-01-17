@@ -26,9 +26,10 @@ func AddToRoot(root *cobra.Command) {
 
 func newCreateCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "create",
-		Short:   "creates a new spreadsheet by taking members information",
-		Long:    `creates a new spreadsheet to be used. The members' names and card numbers need to be entered one by one or passed in a csv file`,
+		Use:   "create",
+		Short: "Creates a new spreadsheet by taking members information",
+		Long: `Creates a new spreadsheet to be used. The members' names and card numbers need to be entered one by one or passed in a csv file.
+Format of every row in the csv file should be "name,cardNumber"`,
 		Example: "create -f list.csv",
 		Run:     run,
 	}
@@ -46,7 +47,7 @@ func newCreateCommand() *cobra.Command {
 		"output",
 		"o",
 		"expense-manager.xlsx",
-		"specifies the csv file containing members information",
+		"specifies the output file name and path",
 	)
 
 	return cmd

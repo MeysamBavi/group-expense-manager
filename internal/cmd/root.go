@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/MeysamBavi/group-expense-manager/internal/cmd/create"
 	"github.com/MeysamBavi/group-expense-manager/internal/cmd/message"
+	"github.com/MeysamBavi/group-expense-manager/internal/cmd/update"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -16,6 +17,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	message.AddToRoot(rootCmd)
 	create.AddToRoot(rootCmd)
+	update.AddToRoot(rootCmd)
 }
 
 func Execute() {
