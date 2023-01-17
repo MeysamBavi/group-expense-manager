@@ -13,20 +13,20 @@ const (
 	membersSheet      = "members"
 	expensesSheet     = "expenses"
 	transactionsSheet = "transactions"
-	debtMatrixSheet   = "Debt Matrix"
+	debtMatrixSheet   = "debt-matrix"
 	baseStateSheet    = "base state"
 	metadataSheet     = "metadata (unmodifiable)"
 )
 
+const (
+	blockStyle = "block"
+)
+
 type Manager struct {
-	members           []*model.Member
-	file              *excelize.File
-	membersIndex      int
-	expensesIndex     int
-	transactionsIndex int
-	debtMatrixIndex   int
-	baseStateIndex    int
-	metadataIndex     int
+	members      []*model.Member
+	file         *excelize.File
+	sheetIndices map[string]int
+	styleIndices map[string]int
 }
 
 func (m *Manager) SaveAs(name string) error {
@@ -45,13 +45,35 @@ func NewManager(members []*model.Member) *Manager {
 	file := excelize.NewFile()
 
 	m := &Manager{
-		members: members,
-		file:    file,
+		members:      members,
+		file:         file,
+		sheetIndices: make(map[string]int),
+		styleIndices: make(map[string]int),
 	}
 
+	createStyles(m)
 	createSheets(m)
 
 	return m
+}
+
+func (m *Manager) SetStyle(key string, value *excelize.Style) {
+	si, _ := m.file.NewStyle(value)
+	m.styleIndices[key] = si
+}
+
+func (m *Manager) GetStyle(key string) int {
+	return m.styleIndices[key]
+}
+
+func (m *Manager) GetSheetIndex(name string) int {
+	return m.sheetIndices[name]
+}
+
+func createStyles(m *Manager) {
+	m.SetStyle(blockStyle, &excelize.Style{
+		Fill: excelize.Fill{Type: "pattern", Color: []string{"#606060"}, Pattern: 1, Shading: 0},
+	})
 }
 
 func createSheets(m *Manager) {
@@ -60,28 +82,28 @@ func createSheets(m *Manager) {
 
 	i, err := m.file.NewSheet(expensesSheet)
 	panicE(err)
-	m.expensesIndex = i
+	m.sheetIndices[expensesSheet] = i
 	defer initializeExpenses(m)
 
 	i, err = m.file.NewSheet(transactionsSheet)
 	panicE(err)
-	m.transactionsIndex = i
+	m.sheetIndices[transactionsSheet] = i
 	defer initializeTransactions(m)
 
 	i, err = m.file.NewSheet(debtMatrixSheet)
 	panicE(err)
-	m.debtMatrixIndex = i
-	initializeDebtMatrix(m)
+	m.sheetIndices[debtMatrixSheet] = i
+	defer initializeDebtMatrix(m)
 
 	i, err = m.file.NewSheet(baseStateSheet)
 	panicE(err)
-	m.baseStateIndex = i
-	initializeBaseState(m)
+	m.sheetIndices[baseStateSheet] = i
+	defer initializeBaseState(m)
 
 	i, err = m.file.NewSheet(metadataSheet)
 	panicE(err)
-	m.metadataIndex = i
-	initializeMetadata(m)
+	m.sheetIndices[metadataSheet] = i
+	defer initializeMetadata(m)
 }
 
 func initializeMembers(m *Manager) {
@@ -96,20 +118,35 @@ func initializeMembers(m *Manager) {
 	}
 }
 
-func initializeMetadata(m *Manager) {
-
-}
+func initializeMetadata(m *Manager) {}
 
 func initializeBaseState(m *Manager) {
+	m.file.SetColWidth(baseStateSheet, column(1), column(m.MembersCount()+1), 16)
 
+	for i := 0; i < m.MembersCount(); i++ {
+		nameRef := memberNameRef(m.members[i].ID)
+		m.file.SetCellFormula(baseStateSheet, cell(i+2, 1), nameRef)
+		m.file.SetCellFormula(baseStateSheet, cell(1, i+2), nameRef)
+		m.file.SetCellStyle(baseStateSheet, cell(i+2, i+2), cell(m.MembersCount()-1+2, i+2), m.GetStyle(blockStyle))
+
+		for j := i + 1; j < m.MembersCount(); j++ {
+			m.file.SetCellValue(baseStateSheet, cell(i+2, j+2), 0)
+		}
+	}
 }
 
 func initializeDebtMatrix(m *Manager) {
-
+	m.file.SetColWidth(debtMatrixSheet, column(1), column(1), 128)
+	m.file.SetCellValue(debtMatrixSheet, cell(1, 1), "Run 'update' command to generate debt matrix")
 }
 
 func initializeTransactions(m *Manager) {
+	m.file.SetColWidth(transactionsSheet, column(1), column(4), 16)
 
+	m.file.SetCellValue(transactionsSheet, cell(1, 1), "Time")
+	m.file.SetCellValue(transactionsSheet, cell(1, 2), "Receiver")
+	m.file.SetCellValue(transactionsSheet, cell(1, 3), "Payer")
+	m.file.SetCellValue(transactionsSheet, cell(1, 4), "Amount")
 }
 
 func initializeExpenses(m *Manager) {
