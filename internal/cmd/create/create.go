@@ -3,6 +3,7 @@ package create
 import (
 	"bufio"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"github.com/MeysamBavi/group-expense-manager/internal/model"
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet"
@@ -25,7 +26,7 @@ func AddToRoot(root *cobra.Command) {
 
 func newCreateCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "create [-f members-file] [-o output-file]",
+		Use:     "create",
 		Short:   "creates a new spreadsheet by taking members information",
 		Long:    `creates a new spreadsheet to be used. The members' names and card numbers need to be entered one by one or passed in a csv file`,
 		Example: "create -f list.csv",
@@ -61,6 +62,10 @@ func run(_ *cobra.Command, _ []string) {
 
 	for _, m := range members {
 		fmt.Println(*m)
+	}
+
+	if len(members) < 2 {
+		log.Fatal(errors.New("number of members should be more than 1"))
 	}
 
 	manager := sheet.NewManager(members)
@@ -106,18 +111,18 @@ func getMembersFromStdin() []*model.Member {
 	r := regexp.MustCompile("^((\"[\\w ]+\")|(\\w+))\\s+((\"[-\\w ]+\")|([-\\w]+))$")
 
 	var i model.MID
-	for ; scanner.Scan(); i++ {
+	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "" {
 			break
 		}
 
-		if !r.MatchString(line) {
+		groups := r.FindStringSubmatch(line)
+		if groups == nil {
 			fmt.Println("You input does not match the specified format. Try again.")
 			continue
 		}
 
-		groups := r.FindStringSubmatch(line)
 		name := groups[1]
 		cardNumber := groups[4]
 
@@ -126,6 +131,8 @@ func getMembersFromStdin() []*model.Member {
 			Name:       strings.Trim(name, " \""),
 			CardNumber: strings.Trim(cardNumber, " \""),
 		})
+
+		i++
 	}
 
 	return members
