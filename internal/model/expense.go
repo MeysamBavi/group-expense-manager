@@ -4,7 +4,7 @@ import "time"
 
 type Share struct {
 	MemberID    MID
-	ShareWeight uint8
+	ShareWeight int
 }
 
 type Expense struct {

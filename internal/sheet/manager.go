@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/MeysamBavi/group-expense-manager/internal/model"
 	"github.com/xuri/excelize/v2"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -19,12 +20,36 @@ const (
 )
 
 const (
+	membersRowOffset = 2
+	membersColOffset = 1
+
+	expensesRowOffset = 3
+	expensesColOffset = 5
+
+	debtorsMatrixRowOffset = 2
+	debtorsMatrixColOffset = 2
+
+	baseStateRowOffset = 2
+	baseStateColOffset = 2
+)
+
+const (
 	blockStyle = "block"
+	timeStyle  = "time"
+)
+
+const (
+	timeLayout            = "1/2/06 15:04"
+	timeLayoutFormatIndex = 22
 )
 
 type Manager struct {
-	members      []*model.Member
 	file         *excelize.File
+	members      []*model.Member
+	expenses     []*model.Expense
+	transactions []*model.Transaction
+	debtMatrix   [][]model.Amount
+	baseState    [][]model.Amount
 	sheetIndices map[string]int
 	styleIndices map[string]int
 }
@@ -47,9 +72,134 @@ func NewManager(members []*model.Member) *Manager {
 
 func LoadManager(fileName string) (*Manager, error) {
 	// TODO
-	//file := excelize.OpenFile(fileName)
+	file, err := excelize.OpenFile(fileName)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	members := loadMembers(file)
+	m := &Manager{
+		file:         file,
+		sheetIndices: make(map[string]int),
+		styleIndices: make(map[string]int),
+		members:      members,
+		expenses:     loadExpenses(file, members),
+		transactions: loadTransactions(file),
+		debtMatrix:   loadDebtMatrix(file),
+		baseState:    loadBaseState(file),
+	}
+
+	createStyles(m)
+
+	for _, member := range m.members {
+		fmt.Println(*member)
+	}
+
+	for _, expense := range m.expenses {
+		fmt.Println(*expense)
+	}
+
+	return m, nil
+}
+
+func loadMembers(file *excelize.File) []*model.Member {
+	setOffsets(membersRowOffset, membersColOffset)
+	defer resetOffsets()
+
+	members := make([]*model.Member, 0)
+	for i := 0; ; i++ {
+		name, _ := file.GetCellValue(membersSheet, cell(i, 0))
+		if name == "" {
+			break
+		}
+
+		cardNumber, _ := file.GetCellValue(membersSheet, cell(i, 1))
+		members = append(members, &model.Member{
+			ID:         model.MID(i),
+			Name:       name,
+			CardNumber: cardNumber,
+		})
+	}
+
+	return members
+}
+
+func loadExpenses(file *excelize.File, members []*model.Member) []*model.Expense {
+	setOffsets(expensesRowOffset, expensesColOffset)
+	defer resetOffsets()
+
+	var expenses []*model.Expense
+	var err error
+	for r := 0; ; r++ {
+
+		theTime, _ := file.GetCellValue(expensesSheet, cell(r, -4), excelize.Options{RawCellValue: false})
+		title, _ := file.GetCellValue(expensesSheet, cell(r, -3))
+		payer, _ := file.GetCellValue(expensesSheet, cell(r, -2))
+		total, _ := file.GetCellValue(expensesSheet, cell(r, -1))
+
+		ex := new(model.Expense)
+		if total == "" || payer == "" {
+			break
+		}
+
+		ex.Title = title
+
+		ex.Time, err = time.Parse(timeLayout, theTime)
+		panicE(err)
+		ex.Time = ex.Time.Local()
+
+		found := false
+		for _, m := range members {
+			if m.Name == payer {
+				ex.PayerID = m.ID
+				found = true
+			}
+		}
+		if !found {
+			panic(fmt.Errorf("found no member with name %q", payer))
+		}
+
+		ex.Amount, err = model.ParseAmount(total)
+		panicE(err)
+
+		var shares []model.Share
+		for idx, member := range members {
+			name, _ := file.GetCellValue(expensesSheet, cell(-2, idx*2))
+			if name == "" {
+				name, _ = file.CalcCellValue(expensesSheet, cell(-2, idx*2))
+			}
+
+			if name != member.Name {
+				panic(fmt.Errorf("member names do not match in 'member' and 'expenses': %q != %q", name, member.Name))
+			}
+
+			weightStr, _ := file.GetCellValue(expensesSheet, cell(r, idx*2))
+			weight, err := strconv.Atoi(weightStr)
+			panicE(err)
+
+			shares = append(shares, model.Share{
+				MemberID:    member.ID,
+				ShareWeight: weight,
+			})
+		}
+		ex.Shares = shares
+
+		expenses = append(expenses, ex)
+	}
+
+	return expenses
+}
+
+func loadTransactions(file *excelize.File) []*model.Transaction {
+	return nil
+}
+
+func loadDebtMatrix(file *excelize.File) [][]model.Amount {
+	return nil
+}
+
+func loadBaseState(file *excelize.File) [][]model.Amount {
+	return nil
 }
 
 func (m *Manager) SaveAs(name string) error {
@@ -85,6 +235,9 @@ func createStyles(m *Manager) {
 	m.SetStyle(blockStyle, &excelize.Style{
 		Fill: excelize.Fill{Type: "pattern", Color: []string{"#606060"}, Pattern: 1, Shading: 0},
 	})
+	m.SetStyle(timeStyle, &excelize.Style{
+		NumFmt: timeLayoutFormatIndex,
+	})
 }
 
 func createSheets(m *Manager) {
@@ -118,7 +271,7 @@ func createSheets(m *Manager) {
 }
 
 func initializeMembers(m *Manager) {
-	setOffsets(2, 1)
+	setOffsets(membersRowOffset, membersColOffset)
 	defer resetOffsets()
 
 	m.file.SetColWidth(membersSheet, column(1), column(2), 32)
@@ -135,7 +288,7 @@ func initializeMembers(m *Manager) {
 func initializeMetadata(m *Manager) {}
 
 func initializeBaseState(m *Manager) {
-	setOffsets(2, 2)
+	setOffsets(baseStateRowOffset, baseStateColOffset)
 	defer resetOffsets()
 
 	m.file.SetColWidth(baseStateSheet, column(1), column(m.MembersCount()+1), 16)
@@ -167,7 +320,7 @@ func initializeTransactions(m *Manager) {
 }
 
 func initializeExpenses(m *Manager) {
-	setOffsets(3, 5)
+	setOffsets(expensesRowOffset, expensesColOffset)
 	defer resetOffsets()
 
 	m.file.SetColWidth(expensesSheet, column(1), column(m.MembersCount()*2+4), 16)
@@ -190,8 +343,9 @@ func initializeExpenses(m *Manager) {
 	}
 
 	m.file.SetCellValue(expensesSheet, cell(0, -4), time.Now())
+	m.file.SetCellStyle(expensesSheet, cell(0, -4), cell(0, -4), m.GetStyle(timeStyle))
 	m.file.SetCellValue(expensesSheet, cell(0, -3), "food")
-	m.file.SetCellValue(expensesSheet, cell(0, -2), "Fred")
+	m.file.SetCellValue(expensesSheet, cell(0, -2), m.members[0].Name)
 	m.file.SetCellValue(expensesSheet, cell(0, -1), 300)
 
 	totalWeightsFormula := fmt.Sprintf("SUM(%s)", strings.Join(weightCells, ", "))
