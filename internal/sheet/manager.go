@@ -71,7 +71,6 @@ func NewManager(members []*model.Member) *Manager {
 }
 
 func LoadManager(fileName string) (*Manager, error) {
-	// TODO
 	file, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return nil, err
@@ -84,9 +83,8 @@ func LoadManager(fileName string) (*Manager, error) {
 		styleIndices: make(map[string]int),
 		members:      members,
 		expenses:     loadExpenses(file, members),
-		transactions: loadTransactions(file),
-		debtMatrix:   loadDebtMatrix(file),
-		baseState:    loadBaseState(file),
+		transactions: loadTransactions(file, members),
+		baseState:    loadBaseState(file, members),
 	}
 
 	createStyles(m)
@@ -98,6 +96,12 @@ func LoadManager(fileName string) (*Manager, error) {
 	for _, expense := range m.expenses {
 		fmt.Println(*expense)
 	}
+
+	for _, transaction := range m.transactions {
+		fmt.Println(*transaction)
+	}
+
+	fmt.Println(m.baseState)
 
 	return m, nil
 }
@@ -137,25 +141,20 @@ func loadExpenses(file *excelize.File, members []*model.Member) []*model.Expense
 		payer, _ := file.GetCellValue(expensesSheet, cell(r, -2))
 		total, _ := file.GetCellValue(expensesSheet, cell(r, -1))
 
-		ex := new(model.Expense)
 		if total == "" || payer == "" {
 			break
 		}
 
+		ex := new(model.Expense)
 		ex.Title = title
 
 		ex.Time, err = time.Parse(timeLayout, theTime)
 		panicE(err)
 		ex.Time = ex.Time.Local()
 
-		found := false
-		for _, m := range members {
-			if m.Name == payer {
-				ex.PayerID = m.ID
-				found = true
-			}
-		}
-		if !found {
+		if mIndex := findMemberIndex(members, payer); mIndex >= 0 {
+			ex.PayerID = model.MID(mIndex)
+		} else {
 			panic(fmt.Errorf("found no member with name %q", payer))
 		}
 
@@ -190,16 +189,78 @@ func loadExpenses(file *excelize.File, members []*model.Member) []*model.Expense
 	return expenses
 }
 
-func loadTransactions(file *excelize.File) []*model.Transaction {
-	return nil
+func loadTransactions(file *excelize.File, members []*model.Member) []*model.Transaction {
+	var err error
+	var transactions []*model.Transaction
+
+	for r := 2; ; r++ {
+		timeStr, _ := file.GetCellValue(transactionsSheet, cell(r, 1), excelize.Options{RawCellValue: false})
+		receiver, _ := file.GetCellValue(transactionsSheet, cell(r, 2))
+		payer, _ := file.GetCellValue(transactionsSheet, cell(r, 3))
+		amountStr, _ := file.GetCellValue(transactionsSheet, cell(r, 4))
+
+		if amountStr == "" {
+			break
+		}
+
+		tr := new(model.Transaction)
+
+		tr.Amount, err = model.ParseAmount(amountStr)
+		panicE(err)
+
+		tr.Time, err = time.Parse(timeLayout, timeStr)
+		tr.Time = tr.Time.Local()
+		panicE(err)
+
+		if mIndex := findMemberIndex(members, payer); mIndex >= 0 {
+			tr.PayerID = model.MID(mIndex)
+		} else {
+			panic(fmt.Errorf("found no member with name %q as payer", payer))
+		}
+
+		if mIndex := findMemberIndex(members, receiver); mIndex >= 0 {
+			tr.ReceiverID = model.MID(mIndex)
+		} else {
+			panic(fmt.Errorf("found no member with name %q as receiver", payer))
+		}
+
+		transactions = append(transactions, tr)
+	}
+
+	return transactions
 }
 
-func loadDebtMatrix(file *excelize.File) [][]model.Amount {
-	return nil
-}
+func loadBaseState(file *excelize.File, members []*model.Member) [][]model.Amount {
+	setOffsets(baseStateRowOffset, baseStateColOffset)
+	defer resetOffsets()
 
-func loadBaseState(file *excelize.File) [][]model.Amount {
-	return nil
+	baseState := make([][]model.Amount, len(members))
+	for i := range baseState {
+		baseState[i] = make([]model.Amount, len(members))
+	}
+
+	for r := 0; r < len(baseState); r++ {
+		rowName, _ := file.CalcCellValue(baseStateSheet, cell(r, -1))
+
+		if mIndex := findMemberIndex(members, rowName); mIndex < 0 || r != mIndex {
+			panic(fmt.Errorf("found no member with name %q and index %d", rowName, r))
+		}
+
+		for c := r + 1; c < len(baseState[r]); c++ {
+			colName, _ := file.CalcCellValue(baseStateSheet, cell(-1, c))
+
+			if mIndex := findMemberIndex(members, colName); mIndex < 0 || c != mIndex {
+				panic(fmt.Errorf("found no member with name %q and index %d", colName, c))
+			}
+
+			amountStr, _ := file.GetCellValue(baseStateSheet, cell(r, c))
+			amount, err := model.ParseAmount(amountStr)
+			panicE(err)
+			baseState[r][c] = amount
+		}
+	}
+
+	return baseState
 }
 
 func (m *Manager) SaveAs(name string) error {
@@ -228,6 +289,15 @@ func (m *Manager) GetSheetIndex(name string) int {
 }
 
 func (m *Manager) UpdateDebtors() {
+	m.calculateDebtMatrix()
+	m.storeDebtMatrix()
+}
+
+func (m *Manager) calculateDebtMatrix() {
+	// TODO
+}
+
+func (m *Manager) storeDebtMatrix() {
 	// TODO
 }
 
