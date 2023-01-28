@@ -3,6 +3,7 @@ package sheet
 import (
 	"fmt"
 	"github.com/MeysamBavi/group-expense-manager/internal/model"
+	"github.com/MeysamBavi/group-expense-manager/internal/sheet/table"
 	"github.com/xuri/excelize/v2"
 	"strconv"
 	"strings"
@@ -25,6 +26,9 @@ const (
 
 	expensesRowOffset = 3
 	expensesColOffset = 5
+
+	transactionsRowOffset = 2
+	transactionsColOffset = 1
 
 	debtorsMatrixRowOffset = 2
 	debtorsMatrixColOffset = 2
@@ -341,18 +345,33 @@ func createSheets(m *Manager) {
 }
 
 func initializeMembers(m *Manager) {
-	setOffsets(membersRowOffset, membersColOffset)
-	defer resetOffsets()
 
-	m.file.SetColWidth(membersSheet, column(1), column(2), 32)
-
-	m.file.SetCellValue(membersSheet, cell(-1, 0), "Name")
-	m.file.SetCellValue(membersSheet, cell(-1, 1), "Card Number")
-
-	for i, member := range m.members {
-		m.file.SetCellValue(membersSheet, cell(i, 0), member.Name)
-		m.file.SetCellValue(membersSheet, cell(i, 1), member.CardNumber)
+	t := table.Table{
+		File:         m.file,
+		SheetName:    membersSheet,
+		RowOffset:    membersRowOffset,
+		ColumnOffset: membersColOffset,
+		ColumnWidth:  32,
+		RowCount:     len(m.members),
+		ColumnCount:  2,
+		ErrorHandler: func(err error) {
+			panic(err)
+		},
 	}
+
+	t.WriteRows(table.WriteRowsParams{
+		HeaderWriter: func(values []string) {
+			values[0] = "Name"
+			values[1] = "Card Number"
+		},
+		RowWriter: func(rowNumber int, values, formulas []string) {
+			values[0] = m.members[rowNumber].Name
+			values[1] = m.members[rowNumber].CardNumber
+		},
+		StyleFounder: func(rowNumber, columnNumber int, value string) (int, bool) {
+			return 0, false
+		},
+	})
 }
 
 func initializeMetadata(m *Manager) {}
@@ -381,12 +400,32 @@ func initializeDebtMatrix(m *Manager) {
 }
 
 func initializeTransactions(m *Manager) {
-	m.file.SetColWidth(transactionsSheet, column(1), column(4), 16)
 
-	m.file.SetCellValue(transactionsSheet, cell(1, 1), "Time")
-	m.file.SetCellValue(transactionsSheet, cell(1, 2), "Receiver")
-	m.file.SetCellValue(transactionsSheet, cell(1, 3), "Payer")
-	m.file.SetCellValue(transactionsSheet, cell(1, 4), "Amount")
+	t := table.Table{
+		File:         m.file,
+		SheetName:    transactionsSheet,
+		RowOffset:    transactionsRowOffset,
+		ColumnOffset: transactionsColOffset,
+		RowCount:     0,
+		ColumnCount:  4,
+		ColumnWidth:  16,
+		ErrorHandler: func(err error) {
+			panic(err)
+		},
+	}
+
+	t.WriteRows(table.WriteRowsParams{
+		HeaderWriter: func(values []string) {
+			values[0] = "Time"
+			values[1] = "Receiver"
+			values[2] = "Payer"
+			values[3] = "Amount"
+		},
+		RowWriter: nil,
+		StyleFounder: func(rowNumber, columnNumber int, value string) (int, bool) {
+			return 0, false
+		},
+	})
 }
 
 func initializeExpenses(m *Manager) {
