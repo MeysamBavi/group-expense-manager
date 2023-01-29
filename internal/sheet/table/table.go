@@ -16,9 +16,9 @@ type Table struct {
 	ErrorHandler            func(error)
 }
 
-type RowWriter func(rowNumber int, values, formulas []string)
-type HeaderWriter func(values []string)
-type StyleFounder func(rowNumber, columnNumber int, value string) (int, bool)
+type RowWriter func(rowNumber int, values []any, formulas []string)
+type HeaderWriter func(values []any, mergeCount *int)
+type StyleFounder func(rowNumber, columnNumber int, value any) (int, bool)
 
 type WriteRowsParams struct {
 	HeaderWriter HeaderWriter
@@ -27,32 +27,38 @@ type WriteRowsParams struct {
 }
 
 func (t *Table) WriteRows(params WriteRowsParams) {
-	columnValues := make([]string, t.ColumnCount)
+	columnValues := make([]any, t.ColumnCount)
 	columnFormulas := make([]string, t.ColumnCount)
 
-	err := t.File.SetColWidth(t.SheetName, t.getColumn(1), t.getColumn(t.ColumnCount), t.ColumnWidth)
+	err := t.File.SetColWidth(t.SheetName, t.getColumn(1), t.getColumn(t.ColumnCount+t.ColumnOffset-1), t.ColumnWidth)
 	if err != nil {
 		t.ErrorHandler(err)
 	}
 
-	params.HeaderWriter(columnValues)
-	t.writeRowCells(-1, columnValues, columnFormulas, params.StyleFounder)
+	mergeCount := 1
+	params.HeaderWriter(columnValues, &mergeCount)
+	t.writeRowCells(-1, columnValues, columnFormulas, params.StyleFounder, mergeCount)
 	fillWithZero(columnValues)
 	fillWithZero(columnFormulas)
 
 	for r := 0; r < t.RowCount; r++ {
 		params.RowWriter(r, columnValues, columnFormulas)
-		t.writeRowCells(r, columnValues, columnFormulas, params.StyleFounder)
+		t.writeRowCells(r, columnValues, columnFormulas, params.StyleFounder, 1)
 		fillWithZero(columnValues)
 		fillWithZero(columnFormulas)
 	}
 }
 
-func (t *Table) writeRowCells(row int, values, formulas []string, styleFounder StyleFounder) {
+func (t *Table) writeRowCells(row int, values []any, formulas []string, styleFounder StyleFounder, multiplier int) {
+	var err error
 	for i := 0; i < len(values); i++ {
-		cell := t.getCell(row, i)
+		cell := t.GetCell(row, i*multiplier)
+		err = t.File.MergeCell(t.SheetName, cell, t.GetCell(row, i*multiplier+multiplier-1))
+		if err != nil {
+			t.ErrorHandler(err)
+		}
 
-		err := t.File.SetCellValue(t.SheetName, cell, values[i])
+		err = t.File.SetCellValue(t.SheetName, cell, values[i])
 		if err != nil {
 			t.ErrorHandler(err)
 		}
@@ -72,13 +78,14 @@ func (t *Table) writeRowCells(row int, values, formulas []string, styleFounder S
 	}
 }
 
-func fillWithZero(values []string) {
+func fillWithZero[T any](values []T) {
+	z := make([]T, len(values))
 	for i := range values {
-		values[i] = ""
+		values[i] = z[i]
 	}
 }
 
-func (t *Table) getCell(rowN, colN int) string {
+func (t *Table) GetCell(rowN, colN int) string {
 	rowN += t.RowOffset
 	colN += t.ColumnOffset
 

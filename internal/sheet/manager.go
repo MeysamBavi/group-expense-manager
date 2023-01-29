@@ -27,6 +27,11 @@ const (
 	expensesRowOffset = 3
 	expensesColOffset = 5
 
+	expensesLeftSideRowOffset  = 3
+	expensesLeftSideColOffset  = 1
+	expensesRightSideRowOffset = 2
+	expensesRightSideColOffset = 5
+
 	transactionsRowOffset = 2
 	transactionsColOffset = 1
 
@@ -360,15 +365,15 @@ func initializeMembers(m *Manager) {
 	}
 
 	t.WriteRows(table.WriteRowsParams{
-		HeaderWriter: func(values []string) {
+		HeaderWriter: func(values []any, _ *int) {
 			values[0] = "Name"
 			values[1] = "Card Number"
 		},
-		RowWriter: func(rowNumber int, values, formulas []string) {
+		RowWriter: func(rowNumber int, values []any, formulas []string) {
 			values[0] = m.members[rowNumber].Name
 			values[1] = m.members[rowNumber].CardNumber
 		},
-		StyleFounder: func(rowNumber, columnNumber int, value string) (int, bool) {
+		StyleFounder: func(rowNumber, columnNumber int, value any) (int, bool) {
 			return 0, false
 		},
 	})
@@ -415,52 +420,82 @@ func initializeTransactions(m *Manager) {
 	}
 
 	t.WriteRows(table.WriteRowsParams{
-		HeaderWriter: func(values []string) {
+		HeaderWriter: func(values []any, _ *int) {
 			values[0] = "Time"
 			values[1] = "Receiver"
 			values[2] = "Payer"
 			values[3] = "Amount"
 		},
 		RowWriter: nil,
-		StyleFounder: func(rowNumber, columnNumber int, value string) (int, bool) {
+		StyleFounder: func(rowNumber, columnNumber int, value any) (int, bool) {
 			return 0, false
 		},
 	})
 }
 
 func initializeExpenses(m *Manager) {
-	setOffsets(expensesRowOffset, expensesColOffset)
-	defer resetOffsets()
 
-	m.file.SetColWidth(expensesSheet, column(1), column(m.MembersCount()*2+4), 16)
-
-	m.file.SetCellValue(expensesSheet, cell(-2, -4), "Time")
-	m.file.SetCellValue(expensesSheet, cell(-2, -3), "Title")
-	m.file.SetCellValue(expensesSheet, cell(-2, -2), "Payer")
-	m.file.SetCellValue(expensesSheet, cell(-2, -1), "Total Amount")
-
-	weightCells := make([]string, 0, m.MembersCount())
-	for i, member := range m.members {
-		m.file.MergeCell(expensesSheet, cell(-2, i*2), cell(-2, i*2+1))
-		m.file.SetCellFormula(expensesSheet, cell(-2, i*2), memberNameRef(member.ID))
-
-		m.file.SetCellValue(expensesSheet, cell(-1, i*2), "Share Weight")
-		m.file.SetCellValue(expensesSheet, cell(-1, i*2+1), "Share Amount")
-
-		weightCell := cell(0, i*2)
-		weightCells = append(weightCells, weightCell)
+	t := table.Table{
+		File:         m.file,
+		SheetName:    expensesSheet,
+		RowOffset:    expensesLeftSideRowOffset,
+		ColumnOffset: expensesLeftSideColOffset,
+		RowCount:     1,
+		ColumnCount:  4,
+		ColumnWidth:  16,
+		ErrorHandler: func(err error) {
+			panic(err)
+		},
 	}
 
-	m.file.SetCellValue(expensesSheet, cell(0, -4), time.Now())
-	m.file.SetCellStyle(expensesSheet, cell(0, -4), cell(0, -4), m.GetStyle(timeStyle))
-	m.file.SetCellValue(expensesSheet, cell(0, -3), "food")
-	m.file.SetCellValue(expensesSheet, cell(0, -2), m.members[0].Name)
-	m.file.SetCellValue(expensesSheet, cell(0, -1), 300)
+	var totalAmountCell string
+	t.WriteRows(table.WriteRowsParams{
+		HeaderWriter: func(values []any, mergeCount *int) {
+			values[0] = "Time"
+			values[1] = "Title"
+			values[2] = "Payer"
+			values[3] = "Total Amount"
+		},
+		RowWriter: func(rowNumber int, values []any, formulas []string) {
+			values[0] = time.Now()
+			values[1] = "food"
+			values[2] = m.members[0].Name
+			values[3] = 300
+			totalAmountCell = t.GetCell(rowNumber, 3)
+		},
+		StyleFounder: func(rowNumber, columnNumber int, value any) (int, bool) {
+			return 0, false
+		},
+	})
 
-	totalWeightsFormula := fmt.Sprintf("SUM(%s)", strings.Join(weightCells, ", "))
-	for i, weightCell := range weightCells {
-		shareAmountFormula := fmt.Sprintf("(%s/%s)*%s", weightCell, totalWeightsFormula, cell(0, -1))
-		m.file.SetCellFormula(expensesSheet, cell(0, i*2+1), shareAmountFormula)
-		m.file.SetCellValue(expensesSheet, weightCell, i>>1)
-	}
+	t.RowOffset = expensesRightSideRowOffset
+	t.ColumnOffset = 5
+	t.RowCount = expensesRightSideColOffset
+	t.ColumnCount = m.MembersCount() * 2
+
+	var weightCells []string
+	t.WriteRows(table.WriteRowsParams{
+		HeaderWriter: func(values []any, mergeCount *int) {
+			*mergeCount = 2
+			for i, v := range m.members {
+				values[i] = v.Name
+			}
+		},
+		RowWriter: func(rowNumber int, values []any, formulas []string) {
+			for i := 0; i < m.MembersCount()*2; i += 2 {
+				if rowNumber == 0 {
+					values[i] = "Share Weight"
+					weightCells = append(weightCells, t.GetCell(1, i))
+					values[i+1] = "Share Amount"
+				} else if rowNumber == 1 {
+					values[i] = i >> 2
+					totalWeightsFormula := fmt.Sprintf("SUM(%s)", strings.Join(weightCells, ", "))
+					formulas[i+1] = fmt.Sprintf("(%s/%s)*%s", t.GetCell(rowNumber, i), totalWeightsFormula, totalAmountCell)
+				}
+			}
+		},
+		StyleFounder: func(rowNumber, columnNumber int, value any) (int, bool) {
+			return 0, false
+		},
+	})
 }
