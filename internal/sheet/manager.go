@@ -365,16 +365,13 @@ func initializeMembers(m *Manager) {
 	}
 
 	t.WriteRows(table.WriteRowsParams{
-		HeaderWriter: func(values []any, _ *int) {
-			values[0] = "Name"
-			values[1] = "Card Number"
+		HeaderWriter: func(cells []*table.Cell, _ *int) {
+			cells[0].Value = "Name"
+			cells[1].Value = "Card Number"
 		},
-		RowWriter: func(rowNumber int, values []any, formulas []string) {
-			values[0] = m.members[rowNumber].Name
-			values[1] = m.members[rowNumber].CardNumber
-		},
-		StyleFounder: func(rowNumber, columnNumber int, value any) (int, bool) {
-			return 0, false
+		RowWriter: func(rowNumber int, cells []*table.Cell) {
+			cells[0].Value = m.members[rowNumber].Name
+			cells[1].Value = m.members[rowNumber].CardNumber
 		},
 	})
 }
@@ -420,15 +417,11 @@ func initializeTransactions(m *Manager) {
 	}
 
 	t.WriteRows(table.WriteRowsParams{
-		HeaderWriter: func(values []any, _ *int) {
-			values[0] = "Time"
-			values[1] = "Receiver"
-			values[2] = "Payer"
-			values[3] = "Amount"
-		},
-		RowWriter: nil,
-		StyleFounder: func(rowNumber, columnNumber int, value any) (int, bool) {
-			return 0, false
+		HeaderWriter: func(cells []*table.Cell, _ *int) {
+			cells[0].Value = "Time"
+			cells[1].Value = "Receiver"
+			cells[2].Value = "Payer"
+			cells[3].Value = "Amount"
 		},
 	})
 }
@@ -450,21 +443,18 @@ func initializeExpenses(m *Manager) {
 
 	var totalAmountCell string
 	t.WriteRows(table.WriteRowsParams{
-		HeaderWriter: func(values []any, mergeCount *int) {
-			values[0] = "Time"
-			values[1] = "Title"
-			values[2] = "Payer"
-			values[3] = "Total Amount"
+		HeaderWriter: func(cells []*table.Cell, mergeCount *int) {
+			cells[0].Value = "Time"
+			cells[1].Value = "Title"
+			cells[2].Value = "Payer"
+			cells[3].Value = "Total Amount"
 		},
-		RowWriter: func(rowNumber int, values []any, formulas []string) {
-			values[0] = time.Now()
-			values[1] = "food"
-			values[2] = m.members[0].Name
-			values[3] = 300
+		RowWriter: func(rowNumber int, cells []*table.Cell) {
+			cells[0].Value = time.Now()
+			cells[1].Value = "food"
+			cells[2].Value = m.members[0].Name
+			cells[3].Value = 300
 			totalAmountCell = t.GetCell(rowNumber, 3)
-		},
-		StyleFounder: func(rowNumber, columnNumber int, value any) (int, bool) {
-			return 0, false
 		},
 	})
 
@@ -475,27 +465,24 @@ func initializeExpenses(m *Manager) {
 
 	var weightCells []string
 	t.WriteRows(table.WriteRowsParams{
-		HeaderWriter: func(values []any, mergeCount *int) {
+		HeaderWriter: func(cells []*table.Cell, mergeCount *int) {
 			*mergeCount = 2
 			for i, v := range m.members {
-				values[i] = v.Name
+				cells[i].Value = v.Name
 			}
 		},
-		RowWriter: func(rowNumber int, values []any, formulas []string) {
+		RowWriter: func(rowNumber int, cells []*table.Cell) {
 			for i := 0; i < m.MembersCount()*2; i += 2 {
 				if rowNumber == 0 {
-					values[i] = "Share Weight"
+					cells[i].Value = "Share Weight"
 					weightCells = append(weightCells, t.GetCell(1, i))
-					values[i+1] = "Share Amount"
+					cells[i+1].Value = "Share Amount"
 				} else if rowNumber == 1 {
-					values[i] = i >> 2
+					cells[i].Value = i >> 2
 					totalWeightsFormula := fmt.Sprintf("SUM(%s)", strings.Join(weightCells, ", "))
-					formulas[i+1] = fmt.Sprintf("(%s/%s)*%s", t.GetCell(rowNumber, i), totalWeightsFormula, totalAmountCell)
+					cells[i+1].Formula = fmt.Sprintf("(%s/%s)*%s", t.GetCell(rowNumber, i), totalWeightsFormula, totalAmountCell)
 				}
 			}
-		},
-		StyleFounder: func(rowNumber, columnNumber int, value any) (int, bool) {
-			return 0, false
 		},
 	})
 }
