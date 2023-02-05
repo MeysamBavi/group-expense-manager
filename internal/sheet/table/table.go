@@ -78,8 +78,12 @@ func (t *Table) WriteRows(params WriteRowsParams) {
 func (t *Table) writeRowCells(row int, cells []*Cell, multiplier int) {
 	var err error
 	for i := 0; i < len(cells); i++ {
-		cell := t.GetCell(row, i*multiplier)
-		err = t.File.MergeCell(t.SheetName, cell, t.GetCell(row, i*multiplier+multiplier-1))
+		cell := t.GetCell(row, i)
+		if i%multiplier != 0 {
+			continue
+		}
+
+		err = t.File.MergeCell(t.SheetName, cell, t.GetCell(row, i+multiplier-1))
 		t.callErrorHandler(err)
 
 		err = t.File.SetCellValue(t.SheetName, cell, cells[i].Value)

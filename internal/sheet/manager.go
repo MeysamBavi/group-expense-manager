@@ -459,8 +459,8 @@ func initializeExpenses(m *Manager) {
 	})
 
 	t.RowOffset = expensesRightSideRowOffset
-	t.ColumnOffset = 5
-	t.RowCount = expensesRightSideColOffset
+	t.ColumnOffset = expensesRightSideColOffset
+	t.RowCount = 2
 	t.ColumnCount = m.MembersCount() * 2
 
 	var weightCells []string
@@ -468,7 +468,7 @@ func initializeExpenses(m *Manager) {
 		HeaderWriter: func(cells []*table.Cell, mergeCount *int) {
 			*mergeCount = 2
 			for i, v := range m.members {
-				cells[i].Value = v.Name
+				cells[i*2].Value = v.Name
 			}
 		},
 		RowWriter: func(rowNumber int, cells []*table.Cell) {
