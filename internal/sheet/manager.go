@@ -35,11 +35,11 @@ const (
 	transactionsRowOffset = 2
 	transactionsColOffset = 1
 
-	debtorsMatrixRowOffset = 2
-	debtorsMatrixColOffset = 2
+	debtMatrixRowOffset = 2
+	debtMatrixColOffset = 1
 
 	baseStateRowOffset = 2
-	baseStateColOffset = 2
+	baseStateColOffset = 1
 )
 
 const (
@@ -379,26 +379,66 @@ func initializeMembers(m *Manager) {
 func initializeMetadata(m *Manager) {}
 
 func initializeBaseState(m *Manager) {
-	setOffsets(baseStateRowOffset, baseStateColOffset)
-	defer resetOffsets()
-
-	m.file.SetColWidth(baseStateSheet, column(1), column(m.MembersCount()+1), 16)
-
-	for i := 0; i < m.MembersCount(); i++ {
-		nameRef := memberNameRef(m.members[i].ID)
-		m.file.SetCellFormula(baseStateSheet, cell(i, -1), nameRef)
-		m.file.SetCellFormula(baseStateSheet, cell(-1, i), nameRef)
-		m.file.SetCellStyle(baseStateSheet, cell(i, i), cell(m.MembersCount()-1, i), m.GetStyle(blockStyle))
-
-		for j := i + 1; j < m.MembersCount(); j++ {
-			m.file.SetCellValue(baseStateSheet, cell(i, j), 0)
-		}
+	t := table.Table{
+		File:         m.file,
+		SheetName:    baseStateSheet,
+		RowOffset:    baseStateRowOffset,
+		ColumnOffset: baseStateColOffset,
+		RowCount:     m.MembersCount(),
+		ColumnCount:  m.MembersCount() + 1,
+		ColumnWidth:  20,
+		ErrorHandler: func(err error) {
+			panic(err)
+		},
 	}
+
+	t.WriteRows(table.WriteRowsParams{
+		HeaderWriter: func(cells []*table.Cell, mergeCount *int) {
+			for i := range m.members {
+				cells[i+1].Value = m.members[i].Name
+			}
+		},
+		RowWriter: func(rowNumber int, cells []*table.Cell) {
+			cells[0].Value = m.members[rowNumber].Name
+			for i := 1; i < len(cells); i++ {
+				cells[i].Value = 0
+			}
+		},
+	})
 }
 
 func initializeDebtMatrix(m *Manager) {
-	m.file.SetColWidth(debtMatrixSheet, column(1), column(1), 128)
-	m.file.SetCellValue(debtMatrixSheet, cell(1, 1), "Run 'update' command to generate debt matrix")
+	t := table.Table{
+		File:         m.file,
+		SheetName:    debtMatrixSheet,
+		RowOffset:    debtMatrixRowOffset,
+		ColumnOffset: debtMatrixColOffset,
+		RowCount:     m.MembersCount() + 1,
+		ColumnCount:  m.MembersCount() + 1,
+		ColumnWidth:  20,
+		ErrorHandler: func(err error) {
+			panic(err)
+		},
+	}
+
+	t.WriteRows(table.WriteRowsParams{
+		HeaderWriter: func(cells []*table.Cell, mergeCount *int) {
+			*mergeCount = m.MembersCount() + 1
+			cells[0].Value = "Run 'update' command to update debt matrix. Person in the row should pay to the person in the column."
+		},
+		RowWriter: func(rowNumber int, cells []*table.Cell) {
+			if rowNumber == 0 {
+				for i := range m.members {
+					cells[i+1].Value = m.members[i].Name
+				}
+				return
+			}
+			cells[0].Value = m.members[rowNumber-1].Name
+			for i := 1; i < len(cells); i++ {
+				cells[i].Value = 0
+			}
+		},
+	})
 }
 
 func initializeTransactions(m *Manager) {
