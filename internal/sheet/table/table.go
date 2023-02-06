@@ -22,42 +22,10 @@ func (t *Table) callErrorHandler(err error) {
 	}
 }
 
-type Cell struct {
-	Value   any
-	Style   *int
-	Formula string
-}
-
-func (c *Cell) reset() {
-	c.Value = nil
-	c.Style = nil
-	c.Formula = ""
-}
-
-type RowWriter func(rowNumber int, cells []*Cell)
-type HeaderWriter func(cells []*Cell, mergeCount *int)
-
-type WriteRowsParams struct {
-	HeaderWriter HeaderWriter
-	RowWriter    RowWriter
-}
-
-func (w *WriteRowsParams) callHeaderWriter(cells []*Cell, mergeCount *int) {
-	if w.HeaderWriter != nil {
-		w.HeaderWriter(cells, mergeCount)
-	}
-}
-
-func (w *WriteRowsParams) callRowWriter(rowNumber int, cells []*Cell) {
-	if w.RowWriter != nil {
-		w.RowWriter(rowNumber, cells)
-	}
-}
-
 func (t *Table) WriteRows(params WriteRowsParams) {
-	cells := make([]*Cell, t.ColumnCount)
+	cells := make([]*WCell, t.ColumnCount)
 	for i := range cells {
-		cells[i] = &Cell{}
+		cells[i] = &WCell{}
 	}
 
 	err := t.File.SetColWidth(t.SheetName, t.getColumn(t.ColumnOffset), t.getColumn(t.ColumnCount+t.ColumnOffset-1), t.ColumnWidth)
@@ -66,16 +34,16 @@ func (t *Table) WriteRows(params WriteRowsParams) {
 	mergeCount := 1
 	params.callHeaderWriter(cells, &mergeCount)
 	t.writeRowCells(-1, cells, mergeCount)
-	resetCells(cells)
+	resetWCells(cells)
 
 	for r := 0; r < t.RowCount; r++ {
 		params.callRowWriter(r, cells)
 		t.writeRowCells(r, cells, 1)
-		resetCells(cells)
+		resetWCells(cells)
 	}
 }
 
-func (t *Table) writeRowCells(row int, cells []*Cell, multiplier int) {
+func (t *Table) writeRowCells(row int, cells []*WCell, multiplier int) {
 	var err error
 	for i := 0; i < len(cells); i++ {
 		cell := t.GetCell(row, i)
@@ -97,12 +65,6 @@ func (t *Table) writeRowCells(row int, cells []*Cell, multiplier int) {
 			err = t.File.SetCellStyle(t.SheetName, cell, cell, style)
 			t.callErrorHandler(err)
 		}
-	}
-}
-
-func resetCells(cells []*Cell) {
-	for _, c := range cells {
-		c.reset()
 	}
 }
 
@@ -140,4 +102,43 @@ func (t *Table) getColumn(colN int) string {
 	}
 
 	return string(colDigits)
+}
+
+func (t *Table) ReadRows(params ReadRowsParams) {
+	cells := make([]*RCell, t.ColumnCount)
+	for i := range cells {
+		cells[i] = &RCell{}
+	}
+
+	i := 0
+	if params.IncludeHeader {
+		i = -1
+	}
+	for ; params.UnknownRowCount || i < t.RowCount; i++ {
+		t.readRowCells(i, cells)
+		if allValuesEmpty(cells) {
+			break
+		}
+		params.RowReader(i, cells)
+		resetRCells(cells)
+	}
+}
+
+func (t *Table) readRowCells(row int, cells []*RCell) {
+	for i := 0; i < len(cells); i++ {
+		cell := t.GetCell(row, i)
+
+		formula, err := t.File.GetCellFormula(t.SheetName, cell)
+		t.callErrorHandler(err)
+		cells[i].Formula = formula
+
+		var value string
+		if formula != "" {
+			value, err = t.File.CalcCellValue(t.SheetName, cell)
+		} else {
+			value, err = t.File.GetCellValue(t.SheetName, cell)
+		}
+		t.callErrorHandler(err)
+		cells[i].Value = value
+	}
 }
