@@ -371,23 +371,6 @@ func initializeExpenses(m *Manager) {
 }
 
 func loadMembers(file *excelize.File) []*model.Member {
-	//members := make([]*model.Member, 0)
-	//for i := 0; ; i++ {
-	//	name, _ := file.GetCellValue(membersSheet, cell(i, 0))
-	//	if name == "" {
-	//		break
-	//	}
-	//
-	//	cardNumber, _ := file.GetCellValue(membersSheet, cell(i, 1))
-	//	members = append(members, &model.Member{
-	//		ID:         model.MID(i),
-	//		Name:       name,
-	//		CardNumber: cardNumber,
-	//	})
-	//}
-	//
-	//return members
-
 	t := table.Table{
 		File:         file,
 		SheetName:    membersSheet,
@@ -520,35 +503,48 @@ func loadTransactions(file *excelize.File, members []*model.Member) []*model.Tra
 }
 
 func loadBaseState(file *excelize.File, members []*model.Member) [][]model.Amount {
-	return nil
-	setOffsets(baseStateRowOffset, baseStateColOffset)
-	defer resetOffsets()
+
+	t := table.Table{
+		File:         file,
+		SheetName:    baseStateSheet,
+		RowOffset:    baseStateRowOffset,
+		ColumnOffset: baseStateColOffset,
+		RowCount:     len(members),
+		ColumnCount:  len(members) + 1,
+		ColumnWidth:  16,
+		ErrorHandler: func(err error) {
+			panic(err)
+		},
+	}
 
 	baseState := make([][]model.Amount, len(members))
-	for i := range baseState {
-		baseState[i] = make([]model.Amount, len(members))
-	}
-
-	for r := 0; r < len(baseState); r++ {
-		rowName, _ := file.GetCellValue(baseStateSheet, cell(r, 0))
-
-		if mIndex := findMemberIndex(members, rowName); mIndex < 0 || r != mIndex {
-			panic(fmt.Errorf("found no member with name %q and index %d", rowName, r))
-		}
-
-		for c := r; c < len(baseState[r]); c++ {
-			colName, _ := file.GetCellValue(baseStateSheet, cell(0, c))
-
-			if mIndex := findMemberIndex(members, colName); mIndex < 0 || c != mIndex {
-				panic(fmt.Errorf("found no member with name %q and index %d", colName, c))
+	t.ReadRows(table.ReadRowsParams{
+		RowReader: func(rowNumber int, cells []*table.RCell) {
+			if rowNumber == -1 {
+				for i := 0; i < len(members); i++ {
+					requireMemberValidity(members, cells[i+1].Value, i)
+				}
+				return
 			}
+			requireMemberValidity(members, cells[0].Value, rowNumber)
 
-			amountStr, _ := file.GetCellValue(baseStateSheet, cell(r, c))
-			amount, err := model.ParseAmount(amountStr)
-			panicE(err)
-			baseState[r][c] = amount
-		}
-	}
+			baseState[rowNumber] = make([]model.Amount, len(members))
+			for i := 0; i < len(members); i++ {
+				amount, err := model.ParseAmount(cells[i+1].Value)
+				panicE(err)
+				baseState[rowNumber][i] = amount
+			}
+		},
+		IncludeHeader:   true,
+		UnknownRowCount: false,
+	})
 
 	return baseState
+}
+
+func requireMemberValidity(members []*model.Member, memberName string, index int) {
+	mIndex := findMemberIndex(members, memberName)
+	if mIndex < 0 || index != mIndex {
+		panic(fmt.Errorf("found no member with name %q and index %d", memberName, index))
+	}
 }
