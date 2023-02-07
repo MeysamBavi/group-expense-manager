@@ -24,13 +24,12 @@ const (
 	baseStateColOffset = 1
 )
 
-func newMembersTable(file *excelize.File, membersCount int) *table.Table {
+func newMembersTable(file *excelize.File) *table.Table {
 	return &table.Table{
 		File:         file,
 		SheetName:    membersSheet,
 		RowOffset:    membersRowOffset,
 		ColumnOffset: membersColOffset,
-		RowCount:     membersCount,
 		ColumnCount:  2,
 		ErrorHandler: fatalIfNotNil,
 	}
@@ -42,7 +41,6 @@ func newExpensesLeftTable(file *excelize.File) *table.Table {
 		SheetName:    expensesSheet,
 		RowOffset:    expensesLeftSideRowOffset,
 		ColumnOffset: expensesLeftSideColOffset,
-		RowCount:     1,
 		ColumnCount:  4,
 		ErrorHandler: fatalIfNotNil,
 	}
@@ -54,7 +52,6 @@ func newExpensesRightTable(file *excelize.File, membersCount int) *table.Table {
 		SheetName:    expensesSheet,
 		RowOffset:    expensesRightSideRowOffset,
 		ColumnOffset: expensesRightSideColOffset,
-		RowCount:     2,
 		ColumnCount:  membersCount * 2,
 		ErrorHandler: fatalIfNotNil,
 	}
@@ -66,7 +63,6 @@ func newExpensesFullTable(file *excelize.File, membersCount int) *table.Table {
 		SheetName:    expensesSheet,
 		RowOffset:    expensesRightSideRowOffset,
 		ColumnOffset: expensesLeftSideColOffset,
-		RowCount:     -1,
 		ColumnCount:  4 + membersCount*2,
 		ErrorHandler: fatalIfNotNil,
 	}
@@ -78,7 +74,6 @@ func newTransactionsTable(file *excelize.File) *table.Table {
 		SheetName:    transactionsSheet,
 		RowOffset:    transactionsRowOffset,
 		ColumnOffset: transactionsColOffset,
-		RowCount:     1,
 		ColumnCount:  4,
 		ErrorHandler: fatalIfNotNil,
 	}
@@ -90,7 +85,6 @@ func newDebtMatrixTable(file *excelize.File, membersCount int) *table.Table {
 		SheetName:    debtMatrixSheet,
 		RowOffset:    debtMatrixRowOffset,
 		ColumnOffset: debtMatrixColOffset,
-		RowCount:     membersCount + 1,
 		ColumnCount:  membersCount + 1,
 		ErrorHandler: fatalIfNotNil,
 	}
@@ -102,7 +96,6 @@ func newBaseStateTable(file *excelize.File, membersCount int) *table.Table {
 		SheetName:    baseStateSheet,
 		RowOffset:    baseStateRowOffset,
 		ColumnOffset: baseStateColOffset,
-		RowCount:     membersCount,
 		ColumnCount:  membersCount + 1,
 		ErrorHandler: fatalIfNotNil,
 	}

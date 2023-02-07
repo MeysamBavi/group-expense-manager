@@ -3,6 +3,7 @@ package table
 type ReadRowsParams struct {
 	RowReader       func(rowNumber int, cells []*RCell)
 	IncludeHeader   bool
+	RowCount        int
 	UnknownRowCount bool
 }
 

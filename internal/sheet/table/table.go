@@ -11,7 +11,7 @@ type Table struct {
 	File                    *excelize.File
 	SheetName               string
 	RowOffset, ColumnOffset int
-	RowCount, ColumnCount   int
+	ColumnCount             int
 	ErrorHandler            func(error)
 }
 
@@ -41,7 +41,7 @@ func (t *Table) WriteRows(params WriteRowsParams) {
 	t.writeRowCells(-1, cells, mergeCount)
 	resetWCells(cells)
 
-	for r := 0; r < t.RowCount; r++ {
+	for r := 0; r < params.RowCount; r++ {
 		params.callRowWriter(r, cells)
 		t.writeRowCells(r, cells, 1)
 		resetWCells(cells)
@@ -119,7 +119,7 @@ func (t *Table) ReadRows(params ReadRowsParams) {
 	if params.IncludeHeader {
 		i = -1
 	}
-	for ; params.UnknownRowCount || i < t.RowCount; i++ {
+	for ; params.UnknownRowCount || i < params.RowCount; i++ {
 		t.readRowCells(i, cells)
 		if allValuesEmpty(cells) {
 			break

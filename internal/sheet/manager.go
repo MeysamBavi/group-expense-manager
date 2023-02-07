@@ -53,7 +53,7 @@ func NewManager(memberStore *store.MemberStore) *Manager {
 	m.file = excelize.NewFile()
 	m.members = memberStore
 
-	m.membersTable = newMembersTable(m.file, m.MembersCount())
+	m.membersTable = newMembersTable(m.file)
 	setTablesExceptMembers(m)
 
 	createStyles(m)
@@ -71,7 +71,7 @@ func LoadManager(fileName string) (*Manager, error) {
 	m := newBaseManager()
 	m.file = file
 
-	m.membersTable = newMembersTable(m.file, 0)
+	m.membersTable = newMembersTable(m.file)
 	m.members = loadMembers(m.membersTable)
 	setTablesExceptMembers(m)
 
@@ -220,6 +220,7 @@ func createSheets(m *Manager) {
 
 func initializeMembers(m *Manager) {
 	m.membersTable.WriteRows(table.WriteRowsParams{
+		RowCount: m.MembersCount(),
 		HeaderWriter: func(cells []*table.WCell, _ *int) {
 			cells[0].Value = "Name"
 			cells[1].Value = "Card Number"
@@ -236,6 +237,7 @@ func initializeMetadata(m *Manager) {}
 
 func initializeBaseState(m *Manager) {
 	m.baseStateTable.WriteRows(table.WriteRowsParams{
+		RowCount: m.MembersCount(),
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			m.members.Range(func(i int, member *model.Member) {
 				cells[i+1].Value = member.Name
@@ -253,6 +255,7 @@ func initializeBaseState(m *Manager) {
 
 func initializeDebtMatrix(m *Manager) {
 	m.debtMatrixTable.WriteRows(table.WriteRowsParams{
+		RowCount: m.MembersCount() + 1,
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			*mergeCount = m.MembersCount() + 1
 			cells[0].Value = "Run 'update' command to update debt matrix. Person in the row should pay to the person in the column."
@@ -276,6 +279,7 @@ func initializeDebtMatrix(m *Manager) {
 func initializeTransactions(m *Manager) {
 
 	m.transactionsTable.WriteRows(table.WriteRowsParams{
+		RowCount: 1,
 		HeaderWriter: func(cells []*table.WCell, _ *int) {
 			cells[0].Value = "Time"
 			cells[1].Value = "Receiver"
@@ -297,6 +301,7 @@ func initializeExpenses(m *Manager) {
 
 	var totalAmountCell string
 	m.expensesLeftTable.WriteRows(table.WriteRowsParams{
+		RowCount: 1,
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			cells[0].Value = "Time"
 			cells[1].Value = "Title"
@@ -315,6 +320,7 @@ func initializeExpenses(m *Manager) {
 
 	var weightCells []string
 	m.expensesRightTable.WriteRows(table.WriteRowsParams{
+		RowCount: 2,
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			*mergeCount = 2
 			m.members.Range(func(i int, member *model.Member) {
@@ -445,6 +451,7 @@ func loadBaseState(t *table.Table, members *store.MemberStore) [][]model.Amount 
 
 	baseState := emptyMatrix(members.Count())
 	t.ReadRows(table.ReadRowsParams{
+		RowCount: members.Count(),
 		RowReader: func(rowNumber int, cells []*table.RCell) {
 			if rowNumber == -1 {
 				for i := 0; i < members.Count(); i++ {
