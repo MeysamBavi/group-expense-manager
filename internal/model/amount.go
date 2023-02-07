@@ -1,6 +1,9 @@
 package model
 
-import "strconv"
+import (
+	"strconv"
+	"strings"
+)
 
 type Amount int64
 
@@ -31,6 +34,10 @@ func (a Amount) ToNumeral() int64 {
 }
 
 func ParseAmount(a string) (Amount, error) {
+	if a == "" {
+		return 0, nil
+	}
+	a = strings.ReplaceAll(a, ",", "")
 	amount, err := strconv.ParseInt(a, 10, 64)
 	return Amount(amount), err
 }
