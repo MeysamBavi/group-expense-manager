@@ -462,42 +462,45 @@ func loadExpenses(file *excelize.File, members []*model.Member) []*model.Expense
 }
 
 func loadTransactions(file *excelize.File, members []*model.Member) []*model.Transaction {
-	var err error
-	var transactions []*model.Transaction
 
-	for r := 2; ; r++ {
-		timeStr, _ := file.GetCellValue(transactionsSheet, cell(r, 1), excelize.Options{RawCellValue: false})
-		receiver, _ := file.GetCellValue(transactionsSheet, cell(r, 2))
-		payer, _ := file.GetCellValue(transactionsSheet, cell(r, 3))
-		amountStr, _ := file.GetCellValue(transactionsSheet, cell(r, 4))
-
-		if amountStr == "" {
-			break
-		}
-
-		tr := new(model.Transaction)
-
-		tr.Amount, err = model.ParseAmount(amountStr)
-		panicE(err)
-
-		tr.Time, err = time.Parse(timeLayout, timeStr)
-		tr.Time = tr.Time.Local()
-		panicE(err)
-
-		if mIndex := findMemberIndex(members, payer); mIndex >= 0 {
-			tr.PayerID = model.MID(mIndex)
-		} else {
-			panic(fmt.Errorf("found no member with name %q as payer", payer))
-		}
-
-		if mIndex := findMemberIndex(members, receiver); mIndex >= 0 {
-			tr.ReceiverID = model.MID(mIndex)
-		} else {
-			panic(fmt.Errorf("found no member with name %q as receiver", payer))
-		}
-
-		transactions = append(transactions, tr)
+	t := table.Table{
+		File:         file,
+		SheetName:    transactionsSheet,
+		RowOffset:    transactionsRowOffset,
+		ColumnOffset: transactionsColOffset,
+		RowCount:     -1,
+		ColumnCount:  4,
+		ColumnWidth:  16,
+		ErrorHandler: func(err error) {
+			panic(err)
+		},
 	}
+
+	var transactions []*model.Transaction
+	t.ReadRows(table.ReadRowsParams{
+		RowReader: func(rowNumber int, cells []*table.RCell) {
+			theTime, err := time.ParseInLocation(timeLayout, cells[0].Value, time.Local)
+			panicE(err)
+
+			receiver := cells[1].Value
+			requireMemberPresence(members, receiver)
+
+			payer := cells[2].Value
+			requireMemberPresence(members, payer)
+
+			amount, err := model.ParseAmount(cells[3].Value)
+			panicE(err)
+
+			transactions = append(transactions, &model.Transaction{
+				Time:       theTime,
+				ReceiverID: model.MID(findMemberIndex(members, receiver)),
+				PayerID:    model.MID(findMemberIndex(members, payer)),
+				Amount:     amount,
+			})
+		},
+		IncludeHeader:   false,
+		UnknownRowCount: true,
+	})
 
 	return transactions
 }
@@ -546,5 +549,11 @@ func requireMemberValidity(members []*model.Member, memberName string, index int
 	mIndex := findMemberIndex(members, memberName)
 	if mIndex < 0 || index != mIndex {
 		panic(fmt.Errorf("found no member with name %q and index %d", memberName, index))
+	}
+}
+
+func requireMemberPresence(members []*model.Member, memberName string) {
+	if findMemberIndex(members, memberName) < 0 {
+		panic(fmt.Errorf("found no member with name %q", memberName))
 	}
 }
