@@ -50,25 +50,36 @@ const (
 )
 
 type Manager struct {
-	file         *excelize.File
-	members      []*model.Member
-	expenses     []*model.Expense
-	transactions []*model.Transaction
-	debtMatrix   [][]model.Amount
-	baseState    [][]model.Amount
-	sheetIndices map[string]int
-	styleIndices map[string]int
+	file               *excelize.File
+	members            []*model.Member
+	expenses           []*model.Expense
+	transactions       []*model.Transaction
+	debtMatrix         [][]model.Amount
+	baseState          [][]model.Amount
+	sheetIndices       map[string]int
+	styleIndices       map[string]int
+	membersTable       *table.Table
+	expensesLeftTable  *table.Table
+	expensesRightTable *table.Table
+	expensesFullTable  *table.Table
+	transactionsTable  *table.Table
+	debtMatrixTable    *table.Table
+	baseStateTable     *table.Table
 }
 
-func NewManager(members []*model.Member) *Manager {
-	file := excelize.NewFile()
-
-	m := &Manager{
-		members:      members,
-		file:         file,
+func newBaseManager() *Manager {
+	return &Manager{
 		sheetIndices: make(map[string]int),
 		styleIndices: make(map[string]int),
 	}
+}
+
+func NewManager(members []*model.Member) *Manager {
+	m := newBaseManager()
+	m.file = excelize.NewFile()
+	m.members = members
+	setMembersTable(m, len(members))
+	setTables(m, len(members))
 
 	createStyles(m)
 	createSheets(m)
@@ -82,19 +93,23 @@ func LoadManager(fileName string) (*Manager, error) {
 		return nil, err
 	}
 
-	members := loadMembers(file)
-	m := &Manager{
-		file:         file,
-		sheetIndices: make(map[string]int),
-		styleIndices: make(map[string]int),
-		members:      members,
-		expenses:     loadExpenses(file, members),
-		transactions: loadTransactions(file, members),
-		baseState:    loadBaseState(file, members),
-	}
+	m := newBaseManager()
+	m.file = file
+
+	setMembersTable(m, 0)
+	m.members = loadMembers(m.membersTable)
+
+	setTables(m, len(m.members))
+	m.expenses = loadExpenses(m.expensesFullTable, m.members)
+	m.transactions = loadTransactions(m.transactionsTable, m.members)
+	m.baseState = loadBaseState(m.baseStateTable, m.members)
 
 	createStyles(m)
 
+	return m, nil
+}
+
+func (m *Manager) PrintData() {
 	for _, member := range m.members {
 		fmt.Println(*member)
 	}
@@ -108,8 +123,6 @@ func LoadManager(fileName string) (*Manager, error) {
 	}
 
 	fmt.Println(m.baseState)
-
-	return m, nil
 }
 
 func (m *Manager) SaveAs(name string) error {
@@ -189,21 +202,97 @@ func createSheets(m *Manager) {
 	defer initializeMetadata(m)
 }
 
-func initializeMembers(m *Manager) {
-
-	t := table.Table{
+func setMembersTable(m *Manager, membersCount int) {
+	m.membersTable = &table.Table{
 		File:         m.file,
 		SheetName:    membersSheet,
 		RowOffset:    membersRowOffset,
 		ColumnOffset: membersColOffset,
-		RowCount:     len(m.members),
+		RowCount:     membersCount,
 		ColumnCount:  2,
 		ErrorHandler: func(err error) {
 			panic(err)
 		},
 	}
+}
 
-	t.WriteRows(table.WriteRowsParams{
+func setTables(m *Manager, membersCount int) {
+
+	m.expensesLeftTable = &table.Table{
+		File:         m.file,
+		SheetName:    expensesSheet,
+		RowOffset:    expensesLeftSideRowOffset,
+		ColumnOffset: expensesLeftSideColOffset,
+		RowCount:     1,
+		ColumnCount:  4,
+		ErrorHandler: func(err error) {
+			panic(err)
+		},
+	}
+
+	m.expensesRightTable = &table.Table{
+		File:         m.file,
+		SheetName:    expensesSheet,
+		RowOffset:    expensesRightSideRowOffset,
+		ColumnOffset: expensesRightSideColOffset,
+		RowCount:     2,
+		ColumnCount:  membersCount * 2,
+		ErrorHandler: func(err error) {
+			panic(err)
+		},
+	}
+
+	m.expensesFullTable = &table.Table{
+		File:         m.file,
+		SheetName:    expensesSheet,
+		RowOffset:    expensesRightSideRowOffset,
+		ColumnOffset: expensesLeftSideColOffset,
+		RowCount:     -1,
+		ColumnCount:  4 + membersCount*2,
+		ErrorHandler: func(err error) {
+			panic(err)
+		},
+	}
+
+	m.transactionsTable = &table.Table{
+		File:         m.file,
+		SheetName:    transactionsSheet,
+		RowOffset:    transactionsRowOffset,
+		ColumnOffset: transactionsColOffset,
+		RowCount:     0,
+		ColumnCount:  4,
+		ErrorHandler: func(err error) {
+			panic(err)
+		},
+	}
+
+	m.debtMatrixTable = &table.Table{
+		File:         m.file,
+		SheetName:    debtMatrixSheet,
+		RowOffset:    debtMatrixRowOffset,
+		ColumnOffset: debtMatrixColOffset,
+		RowCount:     m.MembersCount() + 1,
+		ColumnCount:  m.MembersCount() + 1,
+		ErrorHandler: func(err error) {
+			panic(err)
+		},
+	}
+
+	m.baseStateTable = &table.Table{
+		File:         m.file,
+		SheetName:    baseStateSheet,
+		RowOffset:    baseStateRowOffset,
+		ColumnOffset: baseStateColOffset,
+		RowCount:     m.MembersCount(),
+		ColumnCount:  m.MembersCount() + 1,
+		ErrorHandler: func(err error) {
+			panic(err)
+		},
+	}
+}
+
+func initializeMembers(m *Manager) {
+	m.membersTable.WriteRows(table.WriteRowsParams{
 		HeaderWriter: func(cells []*table.WCell, _ *int) {
 			cells[0].Value = "Name"
 			cells[1].Value = "Card Number"
@@ -219,19 +308,7 @@ func initializeMembers(m *Manager) {
 func initializeMetadata(m *Manager) {}
 
 func initializeBaseState(m *Manager) {
-	t := table.Table{
-		File:         m.file,
-		SheetName:    baseStateSheet,
-		RowOffset:    baseStateRowOffset,
-		ColumnOffset: baseStateColOffset,
-		RowCount:     m.MembersCount(),
-		ColumnCount:  m.MembersCount() + 1,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
-
-	t.WriteRows(table.WriteRowsParams{
+	m.baseStateTable.WriteRows(table.WriteRowsParams{
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			for i := range m.members {
 				cells[i+1].Value = m.members[i].Name
@@ -248,19 +325,7 @@ func initializeBaseState(m *Manager) {
 }
 
 func initializeDebtMatrix(m *Manager) {
-	t := table.Table{
-		File:         m.file,
-		SheetName:    debtMatrixSheet,
-		RowOffset:    debtMatrixRowOffset,
-		ColumnOffset: debtMatrixColOffset,
-		RowCount:     m.MembersCount() + 1,
-		ColumnCount:  m.MembersCount() + 1,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
-
-	t.WriteRows(table.WriteRowsParams{
+	m.debtMatrixTable.WriteRows(table.WriteRowsParams{
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			*mergeCount = m.MembersCount() + 1
 			cells[0].Value = "Run 'update' command to update debt matrix. Person in the row should pay to the person in the column."
@@ -283,19 +348,7 @@ func initializeDebtMatrix(m *Manager) {
 
 func initializeTransactions(m *Manager) {
 
-	t := table.Table{
-		File:         m.file,
-		SheetName:    transactionsSheet,
-		RowOffset:    transactionsRowOffset,
-		ColumnOffset: transactionsColOffset,
-		RowCount:     0,
-		ColumnCount:  4,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
-
-	t.WriteRows(table.WriteRowsParams{
+	m.transactionsTable.WriteRows(table.WriteRowsParams{
 		HeaderWriter: func(cells []*table.WCell, _ *int) {
 			cells[0].Value = "Time"
 			cells[1].Value = "Receiver"
@@ -308,20 +361,8 @@ func initializeTransactions(m *Manager) {
 
 func initializeExpenses(m *Manager) {
 
-	t := table.Table{
-		File:         m.file,
-		SheetName:    expensesSheet,
-		RowOffset:    expensesLeftSideRowOffset,
-		ColumnOffset: expensesLeftSideColOffset,
-		RowCount:     1,
-		ColumnCount:  4,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
-
 	var totalAmountCell string
-	t.WriteRows(table.WriteRowsParams{
+	m.expensesLeftTable.WriteRows(table.WriteRowsParams{
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			cells[0].Value = "Time"
 			cells[1].Value = "Title"
@@ -333,18 +374,13 @@ func initializeExpenses(m *Manager) {
 			cells[1].Value = "food"
 			cells[2].Value = m.members[0].Name
 			cells[3].Value = 300
-			totalAmountCell = t.GetCell(rowNumber, 3)
+			totalAmountCell = m.expensesLeftTable.GetCell(rowNumber, 3)
 		},
 		ColumnWidth: 18,
 	})
 
-	t.RowOffset = expensesRightSideRowOffset
-	t.ColumnOffset = expensesRightSideColOffset
-	t.RowCount = 2
-	t.ColumnCount = m.MembersCount() * 2
-
 	var weightCells []string
-	t.WriteRows(table.WriteRowsParams{
+	m.expensesRightTable.WriteRows(table.WriteRowsParams{
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			*mergeCount = 2
 			for i, v := range m.members {
@@ -355,12 +391,12 @@ func initializeExpenses(m *Manager) {
 			for i := 0; i < m.MembersCount()*2; i += 2 {
 				if rowNumber == 0 {
 					cells[i].Value = "Share Weight"
-					weightCells = append(weightCells, t.GetCell(1, i))
+					weightCells = append(weightCells, m.expensesRightTable.GetCell(1, i))
 					cells[i+1].Value = "Share Amount"
 				} else if rowNumber == 1 {
 					cells[i].Value = i >> 2
 					totalWeightsFormula := fmt.Sprintf("SUM(%s)", strings.Join(weightCells, ", "))
-					cells[i+1].Formula = fmt.Sprintf("(%s/%s)*%s", t.GetCell(rowNumber, i), totalWeightsFormula, totalAmountCell)
+					cells[i+1].Formula = fmt.Sprintf("(%s/%s)*%s", m.expensesRightTable.GetCell(rowNumber, i), totalWeightsFormula, totalAmountCell)
 				}
 			}
 		},
@@ -368,19 +404,7 @@ func initializeExpenses(m *Manager) {
 	})
 }
 
-func loadMembers(file *excelize.File) []*model.Member {
-	t := table.Table{
-		File:         file,
-		SheetName:    membersSheet,
-		RowOffset:    membersRowOffset,
-		ColumnOffset: membersColOffset,
-		RowCount:     -1,
-		ColumnCount:  2,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
-
+func loadMembers(t *table.Table) []*model.Member {
 	var members []*model.Member
 	t.ReadRows(table.ReadRowsParams{
 		RowReader: func(rowNumber int, cells []*table.RCell) {
@@ -397,19 +421,7 @@ func loadMembers(file *excelize.File) []*model.Member {
 	return members
 }
 
-func loadExpenses(file *excelize.File, members []*model.Member) []*model.Expense {
-	t := table.Table{
-		File:         file,
-		SheetName:    expensesSheet,
-		RowOffset:    expensesRightSideRowOffset,
-		ColumnOffset: expensesLeftSideColOffset,
-		RowCount:     -1,
-		ColumnCount:  4 + len(members)*2,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
-
+func loadExpenses(t *table.Table, members []*model.Member) []*model.Expense {
 	var expenses []*model.Expense
 	t.ReadRows(table.ReadRowsParams{
 		RowReader: func(rowNumber int, cells []*table.RCell) {
@@ -463,19 +475,7 @@ func loadExpenses(file *excelize.File, members []*model.Member) []*model.Expense
 	return expenses
 }
 
-func loadTransactions(file *excelize.File, members []*model.Member) []*model.Transaction {
-
-	t := table.Table{
-		File:         file,
-		SheetName:    transactionsSheet,
-		RowOffset:    transactionsRowOffset,
-		ColumnOffset: transactionsColOffset,
-		RowCount:     -1,
-		ColumnCount:  4,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
+func loadTransactions(t *table.Table, members []*model.Member) []*model.Transaction {
 
 	var transactions []*model.Transaction
 	t.ReadRows(table.ReadRowsParams{
@@ -506,19 +506,7 @@ func loadTransactions(file *excelize.File, members []*model.Member) []*model.Tra
 	return transactions
 }
 
-func loadBaseState(file *excelize.File, members []*model.Member) [][]model.Amount {
-
-	t := table.Table{
-		File:         file,
-		SheetName:    baseStateSheet,
-		RowOffset:    baseStateRowOffset,
-		ColumnOffset: baseStateColOffset,
-		RowCount:     len(members),
-		ColumnCount:  len(members) + 1,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
+func loadBaseState(t *table.Table, members []*model.Member) [][]model.Amount {
 
 	baseState := make([][]model.Amount, len(members))
 	t.ReadRows(table.ReadRowsParams{

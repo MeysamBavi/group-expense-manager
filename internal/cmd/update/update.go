@@ -36,6 +36,8 @@ func run(_ *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
+	logLoadedData(manager)
+
 	manager.UpdateDebtors()
 	err = manager.SaveAs(fileName)
 	if err != nil {
@@ -43,4 +45,6 @@ func run(_ *cobra.Command, args []string) {
 	}
 }
 
-
+func logLoadedData(manager *sheet.Manager) {
+	manager.PrintData()
+}

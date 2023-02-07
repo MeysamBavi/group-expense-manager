@@ -6,6 +6,12 @@ type ReadRowsParams struct {
 	UnknownRowCount bool
 }
 
+func (r *ReadRowsParams) callRowReader(rowNumber int, cells []*RCell) {
+	if r.RowReader != nil {
+		r.RowReader(rowNumber, cells)
+	}
+}
+
 type RCell struct {
 	Value   string
 	Formula string

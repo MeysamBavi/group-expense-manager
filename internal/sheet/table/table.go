@@ -124,7 +124,7 @@ func (t *Table) ReadRows(params ReadRowsParams) {
 		if allValuesEmpty(cells) {
 			break
 		}
-		params.RowReader(i, cells)
+		params.callRowReader(i, cells)
 		resetRCells(cells)
 	}
 }
