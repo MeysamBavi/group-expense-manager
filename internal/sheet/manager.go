@@ -24,9 +24,6 @@ const (
 	membersRowOffset = 2
 	membersColOffset = 1
 
-	expensesRowOffset = 3
-	expensesColOffset = 5
-
 	expensesLeftSideRowOffset  = 3
 	expensesLeftSideColOffset  = 1
 	expensesRightSideRowOffset = 2
@@ -199,7 +196,6 @@ func initializeMembers(m *Manager) {
 		SheetName:    membersSheet,
 		RowOffset:    membersRowOffset,
 		ColumnOffset: membersColOffset,
-		ColumnWidth:  32,
 		RowCount:     len(m.members),
 		ColumnCount:  2,
 		ErrorHandler: func(err error) {
@@ -216,6 +212,7 @@ func initializeMembers(m *Manager) {
 			cells[0].Value = m.members[rowNumber].Name
 			cells[1].Value = m.members[rowNumber].CardNumber
 		},
+		ColumnWidth: 32,
 	})
 }
 
@@ -229,7 +226,6 @@ func initializeBaseState(m *Manager) {
 		ColumnOffset: baseStateColOffset,
 		RowCount:     m.MembersCount(),
 		ColumnCount:  m.MembersCount() + 1,
-		ColumnWidth:  20,
 		ErrorHandler: func(err error) {
 			panic(err)
 		},
@@ -247,6 +243,7 @@ func initializeBaseState(m *Manager) {
 				cells[i].Value = 0
 			}
 		},
+		ColumnWidth: 20,
 	})
 }
 
@@ -258,7 +255,6 @@ func initializeDebtMatrix(m *Manager) {
 		ColumnOffset: debtMatrixColOffset,
 		RowCount:     m.MembersCount() + 1,
 		ColumnCount:  m.MembersCount() + 1,
-		ColumnWidth:  20,
 		ErrorHandler: func(err error) {
 			panic(err)
 		},
@@ -281,6 +277,7 @@ func initializeDebtMatrix(m *Manager) {
 				cells[i].Value = 0
 			}
 		},
+		ColumnWidth: 20,
 	})
 }
 
@@ -293,7 +290,6 @@ func initializeTransactions(m *Manager) {
 		ColumnOffset: transactionsColOffset,
 		RowCount:     0,
 		ColumnCount:  4,
-		ColumnWidth:  16,
 		ErrorHandler: func(err error) {
 			panic(err)
 		},
@@ -306,6 +302,7 @@ func initializeTransactions(m *Manager) {
 			cells[2].Value = "Payer"
 			cells[3].Value = "Amount"
 		},
+		ColumnWidth: 16,
 	})
 }
 
@@ -318,7 +315,6 @@ func initializeExpenses(m *Manager) {
 		ColumnOffset: expensesLeftSideColOffset,
 		RowCount:     1,
 		ColumnCount:  4,
-		ColumnWidth:  16,
 		ErrorHandler: func(err error) {
 			panic(err)
 		},
@@ -339,6 +335,7 @@ func initializeExpenses(m *Manager) {
 			cells[3].Value = 300
 			totalAmountCell = t.GetCell(rowNumber, 3)
 		},
+		ColumnWidth: 18,
 	})
 
 	t.RowOffset = expensesRightSideRowOffset
@@ -367,6 +364,7 @@ func initializeExpenses(m *Manager) {
 				}
 			}
 		},
+		ColumnWidth: 14,
 	})
 }
 
@@ -378,7 +376,6 @@ func loadMembers(file *excelize.File) []*model.Member {
 		ColumnOffset: membersColOffset,
 		RowCount:     -1,
 		ColumnCount:  2,
-		ColumnWidth:  16,
 		ErrorHandler: func(err error) {
 			panic(err)
 		},
@@ -408,7 +405,6 @@ func loadExpenses(file *excelize.File, members []*model.Member) []*model.Expense
 		ColumnOffset: expensesLeftSideColOffset,
 		RowCount:     -1,
 		ColumnCount:  4 + len(members)*2,
-		ColumnWidth:  16,
 		ErrorHandler: func(err error) {
 			panic(err)
 		},
@@ -476,7 +472,6 @@ func loadTransactions(file *excelize.File, members []*model.Member) []*model.Tra
 		ColumnOffset: transactionsColOffset,
 		RowCount:     -1,
 		ColumnCount:  4,
-		ColumnWidth:  16,
 		ErrorHandler: func(err error) {
 			panic(err)
 		},
@@ -520,7 +515,6 @@ func loadBaseState(file *excelize.File, members []*model.Member) [][]model.Amoun
 		ColumnOffset: baseStateColOffset,
 		RowCount:     len(members),
 		ColumnCount:  len(members) + 1,
-		ColumnWidth:  16,
 		ErrorHandler: func(err error) {
 			panic(err)
 		},

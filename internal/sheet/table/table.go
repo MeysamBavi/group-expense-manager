@@ -12,7 +12,6 @@ type Table struct {
 	SheetName               string
 	RowOffset, ColumnOffset int
 	RowCount, ColumnCount   int
-	ColumnWidth             float64
 	ErrorHandler            func(error)
 }
 
@@ -28,8 +27,14 @@ func (t *Table) WriteRows(params WriteRowsParams) {
 		cells[i] = &WCell{}
 	}
 
-	err := t.File.SetColWidth(t.SheetName, t.getColumn(t.ColumnOffset), t.getColumn(t.ColumnCount+t.ColumnOffset-1), t.ColumnWidth)
-	t.callErrorHandler(err)
+	if params.ColumnWidth > 0 {
+		err := t.File.SetColWidth(t.SheetName,
+			t.getColumn(t.ColumnOffset),
+			t.getColumn(t.ColumnCount+t.ColumnOffset-1),
+			params.ColumnWidth,
+		)
+		t.callErrorHandler(err)
+	}
 
 	mergeCount := 1
 	params.callHeaderWriter(cells, &mergeCount)

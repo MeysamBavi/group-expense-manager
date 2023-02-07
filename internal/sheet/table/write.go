@@ -3,6 +3,7 @@ package table
 type WriteRowsParams struct {
 	HeaderWriter func(cells []*WCell, mergeCount *int)
 	RowWriter    func(rowNumber int, cells []*WCell)
+	ColumnWidth  float64
 }
 
 type WCell struct {
