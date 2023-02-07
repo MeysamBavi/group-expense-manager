@@ -446,3 +446,9 @@ func requireMemberPresence(members *store.MemberStore, memberName string) {
 		panic(fmt.Errorf("found no member with name %q", memberName))
 	}
 }
+
+func panicE(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
