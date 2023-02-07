@@ -56,6 +56,15 @@ func (ms *MemberStore) GetMemberByIndex(index int) (*model.Member, bool) {
 	return ms.memberByIndex[index], true
 }
 
+func (ms *MemberStore) GetIndexByName(name string) int {
+	name = standardizeName(name)
+	i, ok := ms.indexByName[name]
+	if !ok {
+		return -1
+	}
+	return i
+}
+
 func (ms *MemberStore) RequireMemberByIndex(index int) *model.Member {
 	return ms.memberByIndex[index]
 }

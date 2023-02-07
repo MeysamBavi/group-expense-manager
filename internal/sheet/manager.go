@@ -48,13 +48,6 @@ type Manager struct {
 	baseStateTable     *table.Table
 }
 
-func newBaseManager() *Manager {
-	return &Manager{
-		sheetIndices: make(map[string]int),
-		styleIndices: make(map[string]int),
-	}
-}
-
 func NewManager(memberStore *store.MemberStore) *Manager {
 	m := newBaseManager()
 	m.file = excelize.NewFile()
@@ -91,13 +84,11 @@ func LoadManager(fileName string) (*Manager, error) {
 	return m, nil
 }
 
-func setTablesExceptMembers(m *Manager) {
-	m.expensesLeftTable = newExpensesLeftTable(m.file)
-	m.expensesRightTable = newExpensesRightTable(m.file, m.MembersCount())
-	m.expensesFullTable = newExpensesFullTable(m.file, m.MembersCount())
-	m.transactionsTable = newTransactionsTable(m.file)
-	m.debtMatrixTable = newDebtMatrixTable(m.file, m.MembersCount())
-	m.baseStateTable = newBaseStateTable(m.file, m.MembersCount())
+func newBaseManager() *Manager {
+	return &Manager{
+		sheetIndices: make(map[string]int),
+		styleIndices: make(map[string]int),
+	}
 }
 
 func (m *Manager) PrintData() {
@@ -143,11 +134,52 @@ func (m *Manager) UpdateDebtors() {
 }
 
 func (m *Manager) calculateDebtMatrix() {
-	// TODO
+	debtMatrix := m.baseState
+	m.baseState = emptyMatrix(m.MembersCount())
+
+	for _, expense := range m.expenses {
+		payerIndex := m.members.GetIndexByName(expense.PayerName)
+		for _, share := range expense.Shares {
+			memberIndex := m.members.GetIndexByName(share.MemberName)
+			debtMatrix[memberIndex][payerIndex] =
+				debtMatrix[memberIndex][payerIndex].Add(
+					expense.Amount.Divide(expense.SumOfWeights()).Multiply(share.ShareWeight))
+		}
+	}
+
+	for _, transaction := range m.transactions {
+		receiverIndex := m.members.GetIndexByName(transaction.ReceiverName)
+		payerIndex := m.members.GetIndexByName(transaction.PayerName)
+		debtMatrix[payerIndex][receiverIndex] =
+			debtMatrix[payerIndex][receiverIndex].Sub(transaction.Amount)
+	}
+
+	for r := 0; r < m.MembersCount(); r++ {
+		for c := r; c < m.MembersCount(); c++ {
+			if debtMatrix[r][c].LessThan(debtMatrix[c][r]) {
+				debtMatrix[c][r] = debtMatrix[c][r].Sub(debtMatrix[r][c])
+				debtMatrix[r][c] = model.AmountZero
+			} else {
+				debtMatrix[r][c] = debtMatrix[r][c].Sub(debtMatrix[c][r])
+				debtMatrix[c][r] = model.AmountZero
+			}
+		}
+	}
+
+	m.debtMatrix = debtMatrix
 }
 
 func (m *Manager) storeDebtMatrix() {
 	// TODO
+}
+
+func setTablesExceptMembers(m *Manager) {
+	m.expensesLeftTable = newExpensesLeftTable(m.file)
+	m.expensesRightTable = newExpensesRightTable(m.file, m.MembersCount())
+	m.expensesFullTable = newExpensesFullTable(m.file, m.MembersCount())
+	m.transactionsTable = newTransactionsTable(m.file)
+	m.debtMatrixTable = newDebtMatrixTable(m.file, m.MembersCount())
+	m.baseStateTable = newBaseStateTable(m.file, m.MembersCount())
 }
 
 func createStyles(m *Manager) {
@@ -411,7 +443,7 @@ func loadTransactions(t *table.Table, members *store.MemberStore) []*model.Trans
 
 func loadBaseState(t *table.Table, members *store.MemberStore) [][]model.Amount {
 
-	baseState := make([][]model.Amount, members.Count())
+	baseState := emptyMatrix(members.Count())
 	t.ReadRows(table.ReadRowsParams{
 		RowReader: func(rowNumber int, cells []*table.RCell) {
 			if rowNumber == -1 {
@@ -422,7 +454,6 @@ func loadBaseState(t *table.Table, members *store.MemberStore) [][]model.Amount 
 			}
 			requireMemberValidity(members, cells[0].Value, rowNumber)
 
-			baseState[rowNumber] = make([]model.Amount, members.Count())
 			for i := 0; i < members.Count(); i++ {
 				amount, err := model.ParseAmount(cells[i+1].Value)
 				fatalIfNotNil(err)
@@ -452,4 +483,12 @@ func fatalIfNotNil(err error) {
 	if err != nil {
 		log.FatalErrorByCaller(err)
 	}
+}
+
+func emptyMatrix(length int) [][]model.Amount {
+	result := make([][]model.Amount, length)
+	for i := range result {
+		result[i] = make([]model.Amount, length)
+	}
+	return result
 }
