@@ -401,62 +401,68 @@ func loadMembers(file *excelize.File) []*model.Member {
 }
 
 func loadExpenses(file *excelize.File, members []*model.Member) []*model.Expense {
-	setOffsets(expensesRowOffset, expensesColOffset)
-	defer resetOffsets()
+	t := table.Table{
+		File:         file,
+		SheetName:    expensesSheet,
+		RowOffset:    expensesRightSideRowOffset,
+		ColumnOffset: expensesLeftSideColOffset,
+		RowCount:     -1,
+		ColumnCount:  4 + len(members)*2,
+		ColumnWidth:  16,
+		ErrorHandler: func(err error) {
+			panic(err)
+		},
+	}
 
 	var expenses []*model.Expense
-	var err error
-	for r := 0; ; r++ {
-
-		theTime, _ := file.GetCellValue(expensesSheet, cell(r, -4), excelize.Options{RawCellValue: false})
-		title, _ := file.GetCellValue(expensesSheet, cell(r, -3))
-		payer, _ := file.GetCellValue(expensesSheet, cell(r, -2))
-		total, _ := file.GetCellValue(expensesSheet, cell(r, -1))
-
-		if total == "" || payer == "" {
-			break
-		}
-
-		ex := new(model.Expense)
-		ex.Title = title
-
-		ex.Time, err = time.Parse(timeLayout, theTime)
-		panicE(err)
-		ex.Time = ex.Time.Local()
-
-		if mIndex := findMemberIndex(members, payer); mIndex >= 0 {
-			ex.PayerID = model.MID(mIndex)
-		} else {
-			panic(fmt.Errorf("found no member with name %q", payer))
-		}
-
-		ex.Amount, err = model.ParseAmount(total)
-		panicE(err)
-
-		var shares []model.Share
-		for idx, member := range members {
-			name, _ := file.GetCellValue(expensesSheet, cell(-2, idx*2))
-			if name == "" {
-				name, _ = file.CalcCellValue(expensesSheet, cell(-2, idx*2))
+	t.ReadRows(table.ReadRowsParams{
+		RowReader: func(rowNumber int, cells []*table.RCell) {
+			if rowNumber == -1 {
+				for i := 4; i < t.ColumnCount; i += 2 {
+					requireMemberValidity(members, cells[i].Value, (i-4)/2)
+				}
+				return
 			}
 
-			if name != member.Name {
-				panic(fmt.Errorf("member names do not match in 'member' and 'expenses': %q != %q", name, member.Name))
+			if rowNumber == 0 {
+				return
 			}
 
-			weightStr, _ := file.GetCellValue(expensesSheet, cell(r, idx*2))
-			weight, err := strconv.Atoi(weightStr)
+			theTime, err := time.ParseInLocation(timeLayout, cells[0].Value, time.Local)
 			panicE(err)
 
-			shares = append(shares, model.Share{
-				MemberID:    member.ID,
-				ShareWeight: weight,
-			})
-		}
-		ex.Shares = shares
+			title := cells[1].Value
 
-		expenses = append(expenses, ex)
-	}
+			payer := cells[2].Value
+			requireMemberPresence(members, payer)
+			payerIndex := findMemberIndex(members, payer)
+
+			amount, err := model.ParseAmount(cells[3].Value)
+			panicE(err)
+
+			ex := &model.Expense{
+				Title:   title,
+				Time:    theTime,
+				PayerID: model.MID(payerIndex),
+				Amount:  amount,
+			}
+
+			var shares []model.Share
+			for i := 4; i < t.ColumnCount; i += 2 {
+				weight, err := strconv.Atoi(cells[i].Value)
+				panicE(err)
+				shares = append(shares, model.Share{
+					MemberID:    model.MID((i - 4) / 2),
+					ShareWeight: weight,
+				})
+			}
+
+			ex.Shares = shares
+			expenses = append(expenses, ex)
+		},
+		IncludeHeader:   true,
+		UnknownRowCount: true,
+	})
 
 	return expenses
 }
