@@ -23,10 +23,6 @@ const (
 )
 
 const (
-	blockStyle = "block"
-)
-
-const (
 	timeLayout = "2006/01/02 15:04"
 )
 
@@ -38,7 +34,7 @@ type Manager struct {
 	debtMatrix         [][]model.Amount
 	baseState          [][]model.Amount
 	sheetIndices       map[string]int
-	styleIndices       map[string]int
+	styleIndices       map[int]int
 	membersTable       *table.Table
 	expensesLeftTable  *table.Table
 	expensesRightTable *table.Table
@@ -87,7 +83,7 @@ func LoadManager(fileName string) (*Manager, error) {
 func newBaseManager() *Manager {
 	return &Manager{
 		sheetIndices: make(map[string]int),
-		styleIndices: make(map[string]int),
+		styleIndices: make(map[int]int),
 	}
 }
 
@@ -115,12 +111,12 @@ func (m *Manager) MembersCount() int {
 	return m.members.Count()
 }
 
-func (m *Manager) SetStyle(key string, value *excelize.Style) {
+func (m *Manager) SetStyle(key int, value *excelize.Style) {
 	si, _ := m.file.NewStyle(value)
 	m.styleIndices[key] = si
 }
 
-func (m *Manager) GetStyle(key string) int {
+func (m *Manager) GetStyle(key int) int {
 	return m.styleIndices[key]
 }
 
@@ -189,7 +185,12 @@ func (m *Manager) writeDebtMatrix() {
 
 			cells[0].Value = m.members.RequireMemberByIndex(memberIndex).Name
 			for i := 0; i < m.MembersCount(); i++ {
-				cells[i+1].Value = m.debtMatrix[memberIndex][i].ToNumeral()
+				amount := m.debtMatrix[memberIndex][i].ToNumeral()
+				cells[i+1].Value = amount
+				if amount == 0 {
+					cells[i+1].Value = ""
+				}
+				cells[i+1].Style = newInt(m.GetStyle(moneyStyle))
 			}
 		},
 		ColumnWidth: 20,
@@ -208,7 +209,12 @@ func (m *Manager) writeBaseState() {
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
 			cells[0].Value = m.members.RequireMemberByIndex(rowNumber).Name
 			for i := 0; i < m.MembersCount(); i++ {
-				cells[i+1].Value = m.baseState[rowNumber][i].ToNumeral()
+				amount := m.baseState[rowNumber][i].ToNumeral()
+				cells[i+1].Value = amount
+				if amount == 0 {
+					cells[i+1].Value = ""
+				}
+				cells[i+1].Style = newInt(m.GetStyle(moneyStyle))
 			}
 		},
 		ColumnWidth: 20,
@@ -222,12 +228,6 @@ func setTablesExceptMembers(m *Manager) {
 	m.transactionsTable = newTransactionsTable(m.file)
 	m.debtMatrixTable = newDebtMatrixTable(m.file, m.MembersCount())
 	m.baseStateTable = newBaseStateTable(m.file, m.MembersCount())
-}
-
-func createStyles(m *Manager) {
-	m.SetStyle(blockStyle, &excelize.Style{
-		Fill: excelize.Fill{Type: "pattern", Color: []string{"#606060"}, Pattern: 1, Shading: 0},
-	})
 }
 
 func createSheets(m *Manager) {
@@ -320,10 +320,10 @@ func initializeExpenses(m *Manager) {
 			cells[3].Value = "Total Amount"
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
-			cells[0].Value = time.Now().Format(timeLayout)
-			cells[1].Value = "food"
+			cells[0].Value = time.Date(2007, time.May, 13, 23, 57, 0, 0, time.Local).Format(timeLayout)
+			cells[1].Value = "bandages"
 			cells[2].Value = m.members.RequireMemberByIndex(0).Name
-			cells[3].Value = 300
+			cells[3].Value = 623000
 			totalAmountCell = m.expensesLeftTable.GetCell(rowNumber, 3)
 		},
 		ColumnWidth: 18,
@@ -517,4 +517,10 @@ func copyMatrix(source [][]model.Amount) [][]model.Amount {
 		copy(result[i], source[i])
 	}
 	return result
+}
+
+func newInt(n int) *int {
+	p := new(int)
+	*p = n
+	return p
 }
