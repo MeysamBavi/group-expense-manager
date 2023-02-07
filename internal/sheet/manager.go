@@ -170,7 +170,28 @@ func (m *Manager) calculateDebtMatrix() {
 }
 
 func (m *Manager) storeDebtMatrix() {
-	// TODO
+	m.debtMatrixTable.WriteRows(table.WriteRowsParams{
+		RowCount: m.MembersCount() + 1,
+		RowWriter: func(rowNumber int, cells []*table.WCell) {
+			if rowNumber == 0 {
+				for i := 0; i < m.MembersCount(); i++ {
+					cells[i+1].Value = m.members.RequireMemberByIndex(i).Name
+				}
+				return
+			}
+
+			if rowNumber <= 0 {
+				return
+			}
+
+			rowNumber--
+
+			cells[0].Value = m.members.RequireMemberByIndex(rowNumber).Name
+			for i := 0; i < m.MembersCount(); i++ {
+				cells[i+1].Value = m.debtMatrix[rowNumber][i].ToNumeral()
+			}
+		},
+	})
 }
 
 func setTablesExceptMembers(m *Manager) {
@@ -258,7 +279,7 @@ func initializeDebtMatrix(m *Manager) {
 		RowCount: m.MembersCount() + 1,
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			*mergeCount = m.MembersCount() + 1
-			cells[0].Value = "Run 'update' command to update debt matrix. Person in the row should pay to the person in the column."
+			cells[0].Value = "Run 'update' command to update the debt matrix. Person in the row should pay the person in the column."
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
 			if rowNumber == 0 {

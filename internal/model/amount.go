@@ -26,6 +26,10 @@ func (a Amount) LessThan(b Amount) bool {
 	return a < b
 }
 
+func (a Amount) ToNumeral() int64 {
+	return int64(a)
+}
+
 func ParseAmount(a string) (Amount, error) {
 	amount, err := strconv.ParseInt(a, 10, 64)
 	return Amount(amount), err

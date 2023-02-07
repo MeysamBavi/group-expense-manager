@@ -24,15 +24,3 @@ func resetWCells(cells []*WCell) {
 		c.reset()
 	}
 }
-
-func (w *WriteRowsParams) callHeaderWriter(cells []*WCell, mergeCount *int) {
-	if w.HeaderWriter != nil {
-		w.HeaderWriter(cells, mergeCount)
-	}
-}
-
-func (w *WriteRowsParams) callRowWriter(rowNumber int, cells []*WCell) {
-	if w.RowWriter != nil {
-		w.RowWriter(rowNumber, cells)
-	}
-}
