@@ -21,31 +21,12 @@ const (
 )
 
 const (
-	membersRowOffset = 2
-	membersColOffset = 1
-
-	expensesLeftSideRowOffset  = 3
-	expensesLeftSideColOffset  = 1
-	expensesRightSideRowOffset = 2
-	expensesRightSideColOffset = 5
-
-	transactionsRowOffset = 2
-	transactionsColOffset = 1
-
-	debtMatrixRowOffset = 2
-	debtMatrixColOffset = 1
-
-	baseStateRowOffset = 2
-	baseStateColOffset = 1
-)
-
-const (
 	blockStyle = "block"
 	timeStyle  = "time"
 )
 
 const (
-	timeLayout            = "1/2/06 15:04"
+	timeLayout            = "2006/01/02 15:04"
 	timeLayoutFormatIndex = 22
 )
 
@@ -78,8 +59,9 @@ func NewManager(members []*model.Member) *Manager {
 	m := newBaseManager()
 	m.file = excelize.NewFile()
 	m.members = members
-	setMembersTable(m, len(members))
-	setTables(m, len(members))
+
+	m.membersTable = newMembersTable(m.file, m.MembersCount())
+	setTablesExceptMembers(m)
 
 	createStyles(m)
 	createSheets(m)
@@ -96,10 +78,10 @@ func LoadManager(fileName string) (*Manager, error) {
 	m := newBaseManager()
 	m.file = file
 
-	setMembersTable(m, 0)
+	m.membersTable = newMembersTable(m.file, 0)
 	m.members = loadMembers(m.membersTable)
+	setTablesExceptMembers(m)
 
-	setTables(m, len(m.members))
 	m.expenses = loadExpenses(m.expensesFullTable, m.members)
 	m.transactions = loadTransactions(m.transactionsTable, m.members)
 	m.baseState = loadBaseState(m.baseStateTable, m.members)
@@ -107,6 +89,15 @@ func LoadManager(fileName string) (*Manager, error) {
 	createStyles(m)
 
 	return m, nil
+}
+
+func setTablesExceptMembers(m *Manager) {
+	m.expensesLeftTable = newExpensesLeftTable(m.file)
+	m.expensesRightTable = newExpensesRightTable(m.file, m.MembersCount())
+	m.expensesFullTable = newExpensesFullTable(m.file, m.MembersCount())
+	m.transactionsTable = newTransactionsTable(m.file)
+	m.debtMatrixTable = newDebtMatrixTable(m.file, m.MembersCount())
+	m.baseStateTable = newBaseStateTable(m.file, m.MembersCount())
 }
 
 func (m *Manager) PrintData() {
@@ -202,95 +193,6 @@ func createSheets(m *Manager) {
 	defer initializeMetadata(m)
 }
 
-func setMembersTable(m *Manager, membersCount int) {
-	m.membersTable = &table.Table{
-		File:         m.file,
-		SheetName:    membersSheet,
-		RowOffset:    membersRowOffset,
-		ColumnOffset: membersColOffset,
-		RowCount:     membersCount,
-		ColumnCount:  2,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
-}
-
-func setTables(m *Manager, membersCount int) {
-
-	m.expensesLeftTable = &table.Table{
-		File:         m.file,
-		SheetName:    expensesSheet,
-		RowOffset:    expensesLeftSideRowOffset,
-		ColumnOffset: expensesLeftSideColOffset,
-		RowCount:     1,
-		ColumnCount:  4,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
-
-	m.expensesRightTable = &table.Table{
-		File:         m.file,
-		SheetName:    expensesSheet,
-		RowOffset:    expensesRightSideRowOffset,
-		ColumnOffset: expensesRightSideColOffset,
-		RowCount:     2,
-		ColumnCount:  membersCount * 2,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
-
-	m.expensesFullTable = &table.Table{
-		File:         m.file,
-		SheetName:    expensesSheet,
-		RowOffset:    expensesRightSideRowOffset,
-		ColumnOffset: expensesLeftSideColOffset,
-		RowCount:     -1,
-		ColumnCount:  4 + membersCount*2,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
-
-	m.transactionsTable = &table.Table{
-		File:         m.file,
-		SheetName:    transactionsSheet,
-		RowOffset:    transactionsRowOffset,
-		ColumnOffset: transactionsColOffset,
-		RowCount:     0,
-		ColumnCount:  4,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
-
-	m.debtMatrixTable = &table.Table{
-		File:         m.file,
-		SheetName:    debtMatrixSheet,
-		RowOffset:    debtMatrixRowOffset,
-		ColumnOffset: debtMatrixColOffset,
-		RowCount:     m.MembersCount() + 1,
-		ColumnCount:  m.MembersCount() + 1,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
-
-	m.baseStateTable = &table.Table{
-		File:         m.file,
-		SheetName:    baseStateSheet,
-		RowOffset:    baseStateRowOffset,
-		ColumnOffset: baseStateColOffset,
-		RowCount:     m.MembersCount(),
-		ColumnCount:  m.MembersCount() + 1,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
-	}
-}
-
 func initializeMembers(m *Manager) {
 	m.membersTable.WriteRows(table.WriteRowsParams{
 		HeaderWriter: func(cells []*table.WCell, _ *int) {
@@ -355,7 +257,14 @@ func initializeTransactions(m *Manager) {
 			cells[2].Value = "Payer"
 			cells[3].Value = "Amount"
 		},
-		ColumnWidth: 16,
+		RowWriter: func(rowNumber int, cells []*table.WCell) {
+			cells[0].Value = time.Date(2012, time.June, 26, 5, 6, 0, 0, time.Local).
+				Format(timeLayout)
+			cells[1].Value = m.members[0].Name
+			cells[2].Value = m.members[1].Name
+			cells[3].Value = 223000
+		},
+		ColumnWidth: 18,
 	})
 }
 
