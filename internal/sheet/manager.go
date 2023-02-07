@@ -3,6 +3,7 @@ package sheet
 import (
 	"fmt"
 	"github.com/MeysamBavi/group-expense-manager/internal/model"
+	"github.com/MeysamBavi/group-expense-manager/internal/sheet/store"
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet/table"
 	"github.com/xuri/excelize/v2"
 	"strconv"
@@ -22,17 +23,15 @@ const (
 
 const (
 	blockStyle = "block"
-	timeStyle  = "time"
 )
 
 const (
-	timeLayout            = "2006/01/02 15:04"
-	timeLayoutFormatIndex = 22
+	timeLayout = "2006/01/02 15:04"
 )
 
 type Manager struct {
 	file               *excelize.File
-	members            []*model.Member
+	members            *store.MemberStore
 	expenses           []*model.Expense
 	transactions       []*model.Transaction
 	debtMatrix         [][]model.Amount
@@ -55,10 +54,10 @@ func newBaseManager() *Manager {
 	}
 }
 
-func NewManager(members []*model.Member) *Manager {
+func NewManager(memberStore *store.MemberStore) *Manager {
 	m := newBaseManager()
 	m.file = excelize.NewFile()
-	m.members = members
+	m.members = memberStore
 
 	m.membersTable = newMembersTable(m.file, m.MembersCount())
 	setTablesExceptMembers(m)
@@ -101,9 +100,9 @@ func setTablesExceptMembers(m *Manager) {
 }
 
 func (m *Manager) PrintData() {
-	for _, member := range m.members {
+	m.members.Range(func(index int, member *model.Member) {
 		fmt.Println(*member)
-	}
+	})
 
 	for _, expense := range m.expenses {
 		fmt.Println(*expense)
@@ -121,11 +120,7 @@ func (m *Manager) SaveAs(name string) error {
 }
 
 func (m *Manager) MembersCount() int {
-	return len(m.members)
-}
-
-func (m *Manager) Member(id model.MID) *model.Member {
-	return m.members[id]
+	return m.members.Count()
 }
 
 func (m *Manager) SetStyle(key string, value *excelize.Style) {
@@ -157,9 +152,6 @@ func (m *Manager) storeDebtMatrix() {
 func createStyles(m *Manager) {
 	m.SetStyle(blockStyle, &excelize.Style{
 		Fill: excelize.Fill{Type: "pattern", Color: []string{"#606060"}, Pattern: 1, Shading: 0},
-	})
-	m.SetStyle(timeStyle, &excelize.Style{
-		NumFmt: timeLayoutFormatIndex,
 	})
 }
 
@@ -200,8 +192,8 @@ func initializeMembers(m *Manager) {
 			cells[1].Value = "Card Number"
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
-			cells[0].Value = m.members[rowNumber].Name
-			cells[1].Value = m.members[rowNumber].CardNumber
+			cells[0].Value = m.members.RequireMemberByIndex(rowNumber).Name
+			cells[1].Value = m.members.RequireMemberByIndex(rowNumber).CardNumber
 		},
 		ColumnWidth: 32,
 	})
@@ -212,12 +204,12 @@ func initializeMetadata(m *Manager) {}
 func initializeBaseState(m *Manager) {
 	m.baseStateTable.WriteRows(table.WriteRowsParams{
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
-			for i := range m.members {
-				cells[i+1].Value = m.members[i].Name
-			}
+			m.members.Range(func(i int, member *model.Member) {
+				cells[i+1].Value = member.Name
+			})
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
-			cells[0].Value = m.members[rowNumber].Name
+			cells[0].Value = m.members.RequireMemberByIndex(rowNumber).Name
 			for i := 1; i < len(cells); i++ {
 				cells[i].Value = 0
 			}
@@ -234,12 +226,12 @@ func initializeDebtMatrix(m *Manager) {
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
 			if rowNumber == 0 {
-				for i := range m.members {
-					cells[i+1].Value = m.members[i].Name
-				}
+				m.members.Range(func(i int, member *model.Member) {
+					cells[i+1].Value = member.Name
+				})
 				return
 			}
-			cells[0].Value = m.members[rowNumber-1].Name
+			cells[0].Value = m.members.RequireMemberByIndex(rowNumber - 1).Name
 			for i := 1; i < len(cells); i++ {
 				cells[i].Value = 0
 			}
@@ -260,8 +252,8 @@ func initializeTransactions(m *Manager) {
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
 			cells[0].Value = time.Date(2012, time.June, 26, 5, 6, 0, 0, time.Local).
 				Format(timeLayout)
-			cells[1].Value = m.members[0].Name
-			cells[2].Value = m.members[1].Name
+			cells[1].Value = m.members.RequireMemberByIndex(0).Name
+			cells[2].Value = m.members.RequireMemberByIndex(1).Name
 			cells[3].Value = 223000
 		},
 		ColumnWidth: 18,
@@ -279,9 +271,9 @@ func initializeExpenses(m *Manager) {
 			cells[3].Value = "Total Amount"
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
-			cells[0].Value = time.Now()
+			cells[0].Value = time.Now().Format(timeLayout)
 			cells[1].Value = "food"
-			cells[2].Value = m.members[0].Name
+			cells[2].Value = m.members.RequireMemberByIndex(0).Name
 			cells[3].Value = 300
 			totalAmountCell = m.expensesLeftTable.GetCell(rowNumber, 3)
 		},
@@ -292,9 +284,9 @@ func initializeExpenses(m *Manager) {
 	m.expensesRightTable.WriteRows(table.WriteRowsParams{
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			*mergeCount = 2
-			for i, v := range m.members {
-				cells[i*2].Value = v.Name
-			}
+			m.members.Range(func(i int, member *model.Member) {
+				cells[i*2].Value = member.Name
+			})
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
 			for i := 0; i < m.MembersCount()*2; i += 2 {
@@ -313,15 +305,15 @@ func initializeExpenses(m *Manager) {
 	})
 }
 
-func loadMembers(t *table.Table) []*model.Member {
-	var members []*model.Member
+func loadMembers(t *table.Table) *store.MemberStore {
+	members := store.NewMemberStore()
 	t.ReadRows(table.ReadRowsParams{
 		RowReader: func(rowNumber int, cells []*table.RCell) {
-			members = append(members, &model.Member{
-				ID:         model.MID(rowNumber),
+			err := members.AddMember(&model.Member{
 				Name:       strings.TrimSpace(cells[0].Value),
 				CardNumber: strings.TrimSpace(cells[1].Value),
 			})
+			panicE(err)
 		},
 		IncludeHeader:   false,
 		UnknownRowCount: true,
@@ -330,7 +322,7 @@ func loadMembers(t *table.Table) []*model.Member {
 	return members
 }
 
-func loadExpenses(t *table.Table, members []*model.Member) []*model.Expense {
+func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 	var expenses []*model.Expense
 	t.ReadRows(table.ReadRowsParams{
 		RowReader: func(rowNumber int, cells []*table.RCell) {
@@ -352,24 +344,25 @@ func loadExpenses(t *table.Table, members []*model.Member) []*model.Expense {
 
 			payer := cells[2].Value
 			requireMemberPresence(members, payer)
-			payerIndex := findMemberIndex(members, payer)
 
 			amount, err := model.ParseAmount(cells[3].Value)
 			panicE(err)
 
 			ex := &model.Expense{
-				Title:   title,
-				Time:    theTime,
-				PayerID: model.MID(payerIndex),
-				Amount:  amount,
+				Title:     title,
+				Time:      theTime,
+				PayerName: payer,
+				Amount:    amount,
 			}
 
 			var shares []model.Share
 			for i := 4; i < t.ColumnCount; i += 2 {
 				weight, err := strconv.Atoi(cells[i].Value)
 				panicE(err)
+
+				memberName := members.RequireMemberByIndex((i - 4) / 2).Name
 				shares = append(shares, model.Share{
-					MemberID:    model.MID((i - 4) / 2),
+					MemberName:  memberName,
 					ShareWeight: weight,
 				})
 			}
@@ -384,7 +377,7 @@ func loadExpenses(t *table.Table, members []*model.Member) []*model.Expense {
 	return expenses
 }
 
-func loadTransactions(t *table.Table, members []*model.Member) []*model.Transaction {
+func loadTransactions(t *table.Table, members *store.MemberStore) []*model.Transaction {
 
 	var transactions []*model.Transaction
 	t.ReadRows(table.ReadRowsParams{
@@ -402,10 +395,10 @@ func loadTransactions(t *table.Table, members []*model.Member) []*model.Transact
 			panicE(err)
 
 			transactions = append(transactions, &model.Transaction{
-				Time:       theTime,
-				ReceiverID: model.MID(findMemberIndex(members, receiver)),
-				PayerID:    model.MID(findMemberIndex(members, payer)),
-				Amount:     amount,
+				Time:         theTime,
+				ReceiverName: receiver,
+				PayerName:    payer,
+				Amount:       amount,
 			})
 		},
 		IncludeHeader:   false,
@@ -415,21 +408,21 @@ func loadTransactions(t *table.Table, members []*model.Member) []*model.Transact
 	return transactions
 }
 
-func loadBaseState(t *table.Table, members []*model.Member) [][]model.Amount {
+func loadBaseState(t *table.Table, members *store.MemberStore) [][]model.Amount {
 
-	baseState := make([][]model.Amount, len(members))
+	baseState := make([][]model.Amount, members.Count())
 	t.ReadRows(table.ReadRowsParams{
 		RowReader: func(rowNumber int, cells []*table.RCell) {
 			if rowNumber == -1 {
-				for i := 0; i < len(members); i++ {
+				for i := 0; i < members.Count(); i++ {
 					requireMemberValidity(members, cells[i+1].Value, i)
 				}
 				return
 			}
 			requireMemberValidity(members, cells[0].Value, rowNumber)
 
-			baseState[rowNumber] = make([]model.Amount, len(members))
-			for i := 0; i < len(members); i++ {
+			baseState[rowNumber] = make([]model.Amount, members.Count())
+			for i := 0; i < members.Count(); i++ {
 				amount, err := model.ParseAmount(cells[i+1].Value)
 				panicE(err)
 				baseState[rowNumber][i] = amount
@@ -442,15 +435,14 @@ func loadBaseState(t *table.Table, members []*model.Member) [][]model.Amount {
 	return baseState
 }
 
-func requireMemberValidity(members []*model.Member, memberName string, index int) {
-	mIndex := findMemberIndex(members, memberName)
-	if mIndex < 0 || index != mIndex {
+func requireMemberValidity(members *store.MemberStore, memberName string, index int) {
+	if !members.IsValid(memberName, index) {
 		panic(fmt.Errorf("found no member with name %q and index %d", memberName, index))
 	}
 }
 
-func requireMemberPresence(members []*model.Member, memberName string) {
-	if findMemberIndex(members, memberName) < 0 {
+func requireMemberPresence(members *store.MemberStore, memberName string) {
+	if !members.IsPresent(memberName) {
 		panic(fmt.Errorf("found no member with name %q", memberName))
 	}
 }

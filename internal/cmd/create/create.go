@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/MeysamBavi/group-expense-manager/internal/model"
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet"
+	"github.com/MeysamBavi/group-expense-manager/internal/sheet/store"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
@@ -54,18 +55,18 @@ Format of every row in the csv file should be "name,cardNumber"`,
 }
 
 func run(_ *cobra.Command, _ []string) {
-	var members []*model.Member
+	var members *store.MemberStore
 	if membersFile == "" {
 		members = getMembersFromStdin()
 	} else {
 		members = getMembersFromFile(membersFile)
 	}
 
-	for _, m := range members {
-		fmt.Println(*m)
-	}
+	members.Range(func(_ int, member *model.Member) {
+		fmt.Println(*member)
+	})
 
-	if len(members) < 2 {
+	if members.Count() < 2 {
 		log.Fatal(errors.New("number of members should be more than 1"))
 	}
 
@@ -76,7 +77,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 }
 
-func getMembersFromFile(file string) []*model.Member {
+func getMembersFromFile(file string) *store.MemberStore {
 	csvFile, err := os.Open(file)
 	if err != nil {
 		log.Fatal(err)
@@ -89,20 +90,22 @@ func getMembersFromFile(file string) []*model.Member {
 		log.Fatal(err)
 	}
 
-	var members []*model.Member
-	for i, v := range records {
-		members = append(members, &model.Member{
-			ID:         model.MID(i),
+	members := store.NewMemberStore()
+	for _, v := range records {
+		err := members.AddMember(&model.Member{
 			Name:       v[0],
 			CardNumber: v[1],
 		})
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	return members
 }
 
-func getMembersFromStdin() []*model.Member {
-	var members []*model.Member
+func getMembersFromStdin() *store.MemberStore {
+	members := store.NewMemberStore()
 
 	fmt.Println("Enter member's name and their card number followed by a space. Press enter for next member.")
 	fmt.Println("If names or card numbers contain spaces, enclose them in \"\".")
@@ -111,7 +114,6 @@ func getMembersFromStdin() []*model.Member {
 	scanner := bufio.NewScanner(os.Stdin)
 	r := regexp.MustCompile("^((\"[\\w ]+\")|(\\w+))\\s+((\"[-\\w ]+\")|([-\\w]+))$")
 
-	var i model.MID
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "" {
@@ -127,13 +129,13 @@ func getMembersFromStdin() []*model.Member {
 		name := groups[1]
 		cardNumber := groups[4]
 
-		members = append(members, &model.Member{
-			ID:         i,
+		err := members.AddMember(&model.Member{
 			Name:       strings.Trim(name, " \""),
 			CardNumber: strings.Trim(cardNumber, " \""),
 		})
-
-		i++
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	return members

@@ -3,7 +3,6 @@ package sheet
 import (
 	"errors"
 	"fmt"
-	"github.com/MeysamBavi/group-expense-manager/internal/model"
 )
 
 var (
@@ -88,19 +87,4 @@ func column(colN int) string {
 	}
 
 	return string(colDigits)
-}
-
-func memberNameRef(id model.MID) string {
-	disableOffsets()
-	defer enableOffsets()
-	return fmt.Sprintf("%s!%s", membersSheet, cell(int(id+2), 1))
-}
-
-func findMemberIndex(members []*model.Member, name string) int {
-	for i, m := range members {
-		if m.Name == name {
-			return i
-		}
-	}
-	return -1
 }
