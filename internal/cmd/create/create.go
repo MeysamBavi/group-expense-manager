@@ -5,11 +5,11 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"github.com/MeysamBavi/group-expense-manager/internal/log"
 	"github.com/MeysamBavi/group-expense-manager/internal/model"
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet"
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet/store"
 	"github.com/spf13/cobra"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -67,27 +67,27 @@ func run(_ *cobra.Command, _ []string) {
 	})
 
 	if members.Count() < 2 {
-		log.Fatal(errors.New("number of members should be more than 1"))
+		log.FatalError(errors.New("number of members should be more than 1"))
 	}
 
 	manager := sheet.NewManager(members)
 	err := manager.SaveAs(outputFile)
 	if err != nil {
-		log.Fatal(err)
+		log.FatalError(err)
 	}
 }
 
 func getMembersFromFile(file string) *store.MemberStore {
 	csvFile, err := os.Open(file)
 	if err != nil {
-		log.Fatal(err)
+		log.FatalError(err)
 	}
 
 	reader := csv.NewReader(csvFile)
 
 	records, err := reader.ReadAll()
 	if err != nil {
-		log.Fatal(err)
+		log.FatalError(err)
 	}
 
 	members := store.NewMemberStore()
@@ -97,7 +97,7 @@ func getMembersFromFile(file string) *store.MemberStore {
 			CardNumber: v[1],
 		})
 		if err != nil {
-			log.Fatal(err)
+			log.FatalError(err)
 		}
 	}
 
@@ -134,7 +134,7 @@ func getMembersFromStdin() *store.MemberStore {
 			CardNumber: strings.Trim(cardNumber, " \""),
 		})
 		if err != nil {
-			log.Fatal(err)
+			log.FatalError(err)
 		}
 	}
 

@@ -2,6 +2,7 @@ package sheet
 
 import (
 	"fmt"
+	"github.com/MeysamBavi/group-expense-manager/internal/log"
 	"github.com/MeysamBavi/group-expense-manager/internal/model"
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet/store"
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet/table"
@@ -156,31 +157,31 @@ func createStyles(m *Manager) {
 }
 
 func createSheets(m *Manager) {
-	panicE(m.file.SetSheetName(initialSheetName, membersSheet))
+	fatalIfNotNil(m.file.SetSheetName(initialSheetName, membersSheet))
 	defer initializeMembers(m)
 
 	i, err := m.file.NewSheet(expensesSheet)
-	panicE(err)
+	fatalIfNotNil(err)
 	m.sheetIndices[expensesSheet] = i
 	defer initializeExpenses(m)
 
 	i, err = m.file.NewSheet(transactionsSheet)
-	panicE(err)
+	fatalIfNotNil(err)
 	m.sheetIndices[transactionsSheet] = i
 	defer initializeTransactions(m)
 
 	i, err = m.file.NewSheet(debtMatrixSheet)
-	panicE(err)
+	fatalIfNotNil(err)
 	m.sheetIndices[debtMatrixSheet] = i
 	defer initializeDebtMatrix(m)
 
 	i, err = m.file.NewSheet(baseStateSheet)
-	panicE(err)
+	fatalIfNotNil(err)
 	m.sheetIndices[baseStateSheet] = i
 	defer initializeBaseState(m)
 
 	i, err = m.file.NewSheet(metadataSheet)
-	panicE(err)
+	fatalIfNotNil(err)
 	m.sheetIndices[metadataSheet] = i
 	defer initializeMetadata(m)
 }
@@ -313,7 +314,7 @@ func loadMembers(t *table.Table) *store.MemberStore {
 				Name:       strings.TrimSpace(cells[0].Value),
 				CardNumber: strings.TrimSpace(cells[1].Value),
 			})
-			panicE(err)
+			fatalIfNotNil(err)
 		},
 		IncludeHeader:   false,
 		UnknownRowCount: true,
@@ -338,7 +339,7 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 			}
 
 			theTime, err := time.ParseInLocation(timeLayout, cells[0].Value, time.Local)
-			panicE(err)
+			fatalIfNotNil(err)
 
 			title := cells[1].Value
 
@@ -346,7 +347,7 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 			requireMemberPresence(members, payer)
 
 			amount, err := model.ParseAmount(cells[3].Value)
-			panicE(err)
+			fatalIfNotNil(err)
 
 			ex := &model.Expense{
 				Title:     title,
@@ -358,7 +359,7 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 			var shares []model.Share
 			for i := 4; i < t.ColumnCount; i += 2 {
 				weight, err := strconv.Atoi(cells[i].Value)
-				panicE(err)
+				fatalIfNotNil(err)
 
 				memberName := members.RequireMemberByIndex((i - 4) / 2).Name
 				shares = append(shares, model.Share{
@@ -383,7 +384,7 @@ func loadTransactions(t *table.Table, members *store.MemberStore) []*model.Trans
 	t.ReadRows(table.ReadRowsParams{
 		RowReader: func(rowNumber int, cells []*table.RCell) {
 			theTime, err := time.ParseInLocation(timeLayout, cells[0].Value, time.Local)
-			panicE(err)
+			fatalIfNotNil(err)
 
 			receiver := cells[1].Value
 			requireMemberPresence(members, receiver)
@@ -392,7 +393,7 @@ func loadTransactions(t *table.Table, members *store.MemberStore) []*model.Trans
 			requireMemberPresence(members, payer)
 
 			amount, err := model.ParseAmount(cells[3].Value)
-			panicE(err)
+			fatalIfNotNil(err)
 
 			transactions = append(transactions, &model.Transaction{
 				Time:         theTime,
@@ -424,7 +425,7 @@ func loadBaseState(t *table.Table, members *store.MemberStore) [][]model.Amount 
 			baseState[rowNumber] = make([]model.Amount, members.Count())
 			for i := 0; i < members.Count(); i++ {
 				amount, err := model.ParseAmount(cells[i+1].Value)
-				panicE(err)
+				fatalIfNotNil(err)
 				baseState[rowNumber][i] = amount
 			}
 		},
@@ -437,18 +438,18 @@ func loadBaseState(t *table.Table, members *store.MemberStore) [][]model.Amount 
 
 func requireMemberValidity(members *store.MemberStore, memberName string, index int) {
 	if !members.IsValid(memberName, index) {
-		panic(fmt.Errorf("found no member with name %q and index %d", memberName, index))
+		log.FatalErrorByCaller(fmt.Errorf("found no member with name %q and index %d", memberName, index))
 	}
 }
 
 func requireMemberPresence(members *store.MemberStore, memberName string) {
 	if !members.IsPresent(memberName) {
-		panic(fmt.Errorf("found no member with name %q", memberName))
+		log.FatalErrorByCaller(fmt.Errorf("found no member with name %q", memberName))
 	}
 }
 
-func panicE(err error) {
+func fatalIfNotNil(err error) {
 	if err != nil {
-		panic(err)
+		log.FatalErrorByCaller(err)
 	}
 }

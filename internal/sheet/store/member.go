@@ -30,7 +30,7 @@ func (ms *MemberStore) AddMember(member *model.Member) error {
 
 	_, found := ms.indexByName[name]
 	if found {
-		return fmt.Errorf("duplicate member name %q", name)
+		return fmt.Errorf("duplicate member name %q", member.Name)
 	}
 
 	ms.indexByName[name] = len(ms.memberByIndex)

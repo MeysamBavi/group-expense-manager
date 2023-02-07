@@ -32,9 +32,7 @@ func newMembersTable(file *excelize.File, membersCount int) *table.Table {
 		ColumnOffset: membersColOffset,
 		RowCount:     membersCount,
 		ColumnCount:  2,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
+		ErrorHandler: fatalIfNotNil,
 	}
 }
 
@@ -46,9 +44,7 @@ func newExpensesLeftTable(file *excelize.File) *table.Table {
 		ColumnOffset: expensesLeftSideColOffset,
 		RowCount:     1,
 		ColumnCount:  4,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
+		ErrorHandler: fatalIfNotNil,
 	}
 }
 
@@ -60,9 +56,7 @@ func newExpensesRightTable(file *excelize.File, membersCount int) *table.Table {
 		ColumnOffset: expensesRightSideColOffset,
 		RowCount:     2,
 		ColumnCount:  membersCount * 2,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
+		ErrorHandler: fatalIfNotNil,
 	}
 }
 
@@ -74,9 +68,7 @@ func newExpensesFullTable(file *excelize.File, membersCount int) *table.Table {
 		ColumnOffset: expensesLeftSideColOffset,
 		RowCount:     -1,
 		ColumnCount:  4 + membersCount*2,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
+		ErrorHandler: fatalIfNotNil,
 	}
 }
 
@@ -88,9 +80,7 @@ func newTransactionsTable(file *excelize.File) *table.Table {
 		ColumnOffset: transactionsColOffset,
 		RowCount:     1,
 		ColumnCount:  4,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
+		ErrorHandler: fatalIfNotNil,
 	}
 }
 
@@ -102,9 +92,7 @@ func newDebtMatrixTable(file *excelize.File, membersCount int) *table.Table {
 		ColumnOffset: debtMatrixColOffset,
 		RowCount:     membersCount + 1,
 		ColumnCount:  membersCount + 1,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
+		ErrorHandler: fatalIfNotNil,
 	}
 }
 
@@ -116,8 +104,6 @@ func newBaseStateTable(file *excelize.File, membersCount int) *table.Table {
 		ColumnOffset: baseStateColOffset,
 		RowCount:     membersCount,
 		ColumnCount:  membersCount + 1,
-		ErrorHandler: func(err error) {
-			panic(err)
-		},
+		ErrorHandler: fatalIfNotNil,
 	}
 }

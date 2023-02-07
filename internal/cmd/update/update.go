@@ -2,9 +2,9 @@ package update
 
 import (
 	"errors"
+	"github.com/MeysamBavi/group-expense-manager/internal/log"
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet"
 	"github.com/spf13/cobra"
-	"log"
 )
 
 func AddToRoot(root *cobra.Command) {
@@ -33,7 +33,7 @@ func run(_ *cobra.Command, args []string) {
 	fileName := args[0]
 	manager, err := sheet.LoadManager(fileName)
 	if err != nil {
-		log.Fatal(err)
+		log.FatalError(err)
 	}
 
 	logLoadedData(manager)
@@ -41,7 +41,7 @@ func run(_ *cobra.Command, args []string) {
 	manager.UpdateDebtors()
 	err = manager.SaveAs(fileName)
 	if err != nil {
-		log.Fatal(err)
+		log.FatalError(err)
 	}
 }
 
