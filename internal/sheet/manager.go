@@ -130,12 +130,13 @@ func (m *Manager) GetSheetIndex(name string) int {
 
 func (m *Manager) UpdateDebtors() {
 	m.calculateDebtMatrix()
-	m.storeDebtMatrix()
+	m.baseState = emptyMatrix(m.MembersCount())
+	m.writeBaseState()
+	m.writeDebtMatrix()
 }
 
 func (m *Manager) calculateDebtMatrix() {
-	debtMatrix := m.baseState
-	m.baseState = emptyMatrix(m.MembersCount())
+	debtMatrix := copyMatrix(m.baseState)
 
 	for _, expense := range m.expenses {
 		payerIndex := m.members.GetIndexByName(expense.PayerName)
@@ -169,28 +170,48 @@ func (m *Manager) calculateDebtMatrix() {
 	m.debtMatrix = debtMatrix
 }
 
-func (m *Manager) storeDebtMatrix() {
+func (m *Manager) writeDebtMatrix() {
 	m.debtMatrixTable.WriteRows(table.WriteRowsParams{
-		RowCount: m.MembersCount() + 1,
+		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
+			*mergeCount = m.debtMatrixTable.ColumnCount
+			cells[0].Value = "Run 'update' command to update the debt matrix. Person in the row should pay the person in the column."
+		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
 			if rowNumber == 0 {
-				for i := 0; i < m.MembersCount(); i++ {
-					cells[i+1].Value = m.members.RequireMemberByIndex(i).Name
-				}
+				cells[0].Value = fmt.Sprintf("last update: %s", time.Now().Format(timeLayout))
+				m.members.Range(func(i int, member *model.Member) {
+					cells[i+1].Value = member.Name
+				})
 				return
 			}
 
-			if rowNumber <= 0 {
-				return
-			}
+			memberIndex := rowNumber - 1
 
-			rowNumber--
-
-			cells[0].Value = m.members.RequireMemberByIndex(rowNumber).Name
+			cells[0].Value = m.members.RequireMemberByIndex(memberIndex).Name
 			for i := 0; i < m.MembersCount(); i++ {
-				cells[i+1].Value = m.debtMatrix[rowNumber][i].ToNumeral()
+				cells[i+1].Value = m.debtMatrix[memberIndex][i].ToNumeral()
 			}
 		},
+		ColumnWidth: 20,
+		RowCount:    m.MembersCount() + 1,
+	})
+}
+
+func (m *Manager) writeBaseState() {
+	m.baseStateTable.WriteRows(table.WriteRowsParams{
+		RowCount: m.MembersCount(),
+		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
+			m.members.Range(func(i int, member *model.Member) {
+				cells[i+1].Value = member.Name
+			})
+		},
+		RowWriter: func(rowNumber int, cells []*table.WCell) {
+			cells[0].Value = m.members.RequireMemberByIndex(rowNumber).Name
+			for i := 0; i < m.MembersCount(); i++ {
+				cells[i+1].Value = m.baseState[rowNumber][i].ToNumeral()
+			}
+		},
+		ColumnWidth: 20,
 	})
 }
 
@@ -257,44 +278,13 @@ func initializeMembers(m *Manager) {
 func initializeMetadata(m *Manager) {}
 
 func initializeBaseState(m *Manager) {
-	m.baseStateTable.WriteRows(table.WriteRowsParams{
-		RowCount: m.MembersCount(),
-		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
-			m.members.Range(func(i int, member *model.Member) {
-				cells[i+1].Value = member.Name
-			})
-		},
-		RowWriter: func(rowNumber int, cells []*table.WCell) {
-			cells[0].Value = m.members.RequireMemberByIndex(rowNumber).Name
-			for i := 1; i < len(cells); i++ {
-				cells[i].Value = 0
-			}
-		},
-		ColumnWidth: 20,
-	})
+	m.baseState = emptyMatrix(m.MembersCount())
+	m.writeBaseState()
 }
 
 func initializeDebtMatrix(m *Manager) {
-	m.debtMatrixTable.WriteRows(table.WriteRowsParams{
-		RowCount: m.MembersCount() + 1,
-		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
-			*mergeCount = m.MembersCount() + 1
-			cells[0].Value = "Run 'update' command to update the debt matrix. Person in the row should pay the person in the column."
-		},
-		RowWriter: func(rowNumber int, cells []*table.WCell) {
-			if rowNumber == 0 {
-				m.members.Range(func(i int, member *model.Member) {
-					cells[i+1].Value = member.Name
-				})
-				return
-			}
-			cells[0].Value = m.members.RequireMemberByIndex(rowNumber - 1).Name
-			for i := 1; i < len(cells); i++ {
-				cells[i].Value = 0
-			}
-		},
-		ColumnWidth: 20,
-	})
+	m.debtMatrix = emptyMatrix(m.MembersCount())
+	m.writeDebtMatrix()
 }
 
 func initializeTransactions(m *Manager) {
@@ -517,6 +507,14 @@ func emptyMatrix(length int) [][]model.Amount {
 	result := make([][]model.Amount, length)
 	for i := range result {
 		result[i] = make([]model.Amount, length)
+	}
+	return result
+}
+
+func copyMatrix(source [][]model.Amount) [][]model.Amount {
+	result := emptyMatrix(len(source))
+	for i := range source {
+		copy(result[i], source[i])
 	}
 	return result
 }
