@@ -126,8 +126,6 @@ func (m *Manager) GetSheetIndex(name string) int {
 
 func (m *Manager) UpdateDebtors() {
 	m.calculateDebtMatrix()
-	m.baseState = emptyMatrix(m.MembersCount())
-	m.writeBaseState()
 	m.writeDebtMatrix()
 }
 

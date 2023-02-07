@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	override bool
+	overwrite bool
 )
 
 func AddToRoot(root *cobra.Command) {
@@ -22,7 +22,7 @@ func newUpdateCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update file-name",
 		Short: "Updates the debt matrix",
-		Long:  "Updates the debt matrix based on expenses, transactions and base state. Base state will be reset after running this command.",
+		Long:  "Updates the debt matrix based on expenses, transactions and base state",
 		Args: func(_ *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("no arguments passed as file name")
@@ -33,11 +33,11 @@ func newUpdateCommand() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVarP(
-		&override,
-		"override",
+		&overwrite,
+		"overwrite",
 		"r",
 		false,
-		"if set, overrides the existing file instead of creating a new copy",
+		"if set, overwrites the existing file instead of creating a new copy",
 	)
 
 	return cmd
@@ -53,7 +53,7 @@ func run(_ *cobra.Command, args []string) {
 	logLoadedData(manager)
 
 	manager.UpdateDebtors()
-	if !override {
+	if !overwrite {
 		ext := path.Ext(fileName)
 		fileName = strings.TrimSuffix(fileName, ext) + "-updated" + ext
 	}
