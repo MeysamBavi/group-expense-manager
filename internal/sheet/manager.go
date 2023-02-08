@@ -403,7 +403,8 @@ func initializeExpenses(m *Manager) {
 			for i := 0; i < m.MembersCount()*2; i += 2 {
 				if rowNumber == 0 {
 					cells[i].Value = "Share Weight"
-					weightCells = append(weightCells, m.expensesRightTable.GetCell(1, i))
+					wc := fmt.Sprintf("IF(%s=TRUE, 1, %s)", m.expensesRightTable.GetCell(1, i), m.expensesRightTable.GetCell(1, i))
+					weightCells = append(weightCells, wc)
 					cells[i+1].Value = "Share Amount"
 				} else if rowNumber == 1 {
 					cells[i].Value = i >> 2
