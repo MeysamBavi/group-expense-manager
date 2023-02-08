@@ -18,10 +18,17 @@ func (b *Builder) Build() *excelize.Style {
 	return r
 }
 
-func (b *Builder) WithBackground(background string) *Builder {
+func (b *Builder) WithBackground(color string) *Builder {
 	b.style.Fill.Pattern = 1
 	b.style.Fill.Type = "pattern"
-	b.style.Fill.Color = []string{background}
+	b.style.Fill.Color = []string{color}
+	return b
+}
+
+func (b *Builder) WithCrossedBackground(color string) *Builder {
+	b.style.Fill.Pattern = 8
+	b.style.Fill.Type = "pattern"
+	b.style.Fill.Color = []string{color}
 	return b
 }
 
@@ -31,6 +38,7 @@ func (b *Builder) WithRightBorderOnly(color string) *Builder {
 	}
 	return b
 }
+
 func (b *Builder) WithLeftBorderOnly(color string) *Builder {
 	b.style.Border = []excelize.Border{
 		{Type: "left", Color: color, Style: 1},

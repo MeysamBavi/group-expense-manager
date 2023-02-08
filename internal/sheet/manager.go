@@ -169,6 +169,12 @@ func (m *Manager) calculateDebtMatrix() {
 }
 
 func (m *Manager) writeDebtMatrix() {
+	conditionalFormatCriteria0 := fmt.Sprintf("=AND(MOD(ROW(), 2)=0,(ROW()-%d)<>(COLUMN()-%d))",
+		m.debtMatrixTable.RowOffset, m.debtMatrixTable.ColumnOffset)
+
+	conditionalFormatCriteria1 := fmt.Sprintf("=AND(MOD(ROW(), 2)=1,(ROW()-%d)<>(COLUMN()-%d))",
+		m.debtMatrixTable.RowOffset, m.debtMatrixTable.ColumnOffset)
+
 	m.debtMatrixTable.WriteRows(table.WriteRowsParams{
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			*mergeCount = m.debtMatrixTable.ColumnCount
@@ -196,17 +202,21 @@ func (m *Manager) writeDebtMatrix() {
 				if amount == 0 {
 					cells[i+1].Value = ""
 				}
-				cells[i+1].Style = newInt(m.GetStyle(moneyStyle))
+				if memberIndex == i {
+					cells[i+1].Style = newInt(m.GetStyle(alternateBlockStyle))
+				} else {
+					cells[i+1].Style = newInt(m.GetStyle(moneyStyle))
+				}
 			}
 		},
 		ColumnWidth: 20,
 		RowCount:    m.MembersCount() + 1,
 		ConditionalStyles: []*table.ConditionalStyle{
 			{1, 1, m.MembersCount(), m.MembersCount(), []excelize.ConditionalFormatOptions{
-				{Type: "formula", Criteria: "=MOD(ROW(), 2)=0", Format: m.GetStyle(alternate0Style)},
+				{Type: "formula", Criteria: conditionalFormatCriteria0, Format: m.GetStyle(alternate0Style)},
 			}},
 			{1, 1, m.MembersCount(), m.MembersCount(), []excelize.ConditionalFormatOptions{
-				{Type: "formula", Criteria: "=MOD(ROW(), 2)=1", Format: m.GetStyle(alternate1Style)},
+				{Type: "formula", Criteria: conditionalFormatCriteria1, Format: m.GetStyle(alternate1Style)},
 			}},
 		},
 	})
