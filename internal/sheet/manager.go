@@ -326,6 +326,7 @@ func initializeTransactions(m *Manager) {
 			cells[1].Value = m.members.RequireMemberByIndex(0).Name
 			cells[2].Value = m.members.RequireMemberByIndex(1).Name
 			cells[3].Value = 223000
+			cells[3].Style = newInt(m.GetStyle(moneyStyle))
 		},
 		ColumnWidth: 18,
 		RowStyler: func(row int) (int, bool) {
@@ -358,6 +359,7 @@ func initializeExpenses(m *Manager) {
 			cells[1].Value = "bandages"
 			cells[2].Value = m.members.RequireMemberByIndex(0).Name
 			cells[3].Value = 623000
+			cells[3].Style = newInt(m.GetStyle(moneyStyle))
 			totalAmountCell = m.expensesLeftTable.GetCell(rowNumber, 3)
 		},
 		ColumnWidth: 16,
@@ -392,6 +394,7 @@ func initializeExpenses(m *Manager) {
 					cells[i].Value = i >> 2
 					totalWeightsFormula := fmt.Sprintf("SUM(%s)", strings.Join(weightCells, ", "))
 					cells[i+1].Formula = fmt.Sprintf("(%s/%s)*%s", m.expensesRightTable.GetCell(rowNumber, i), totalWeightsFormula, totalAmountCell)
+					cells[i+1].Style = newInt(m.GetStyle(moneyStyle))
 				}
 			}
 		},
