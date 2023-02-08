@@ -5,6 +5,7 @@ import (
 	"github.com/MeysamBavi/group-expense-manager/internal/log"
 	"github.com/MeysamBavi/group-expense-manager/internal/model"
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet/store"
+	"github.com/MeysamBavi/group-expense-manager/internal/sheet/style"
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet/table"
 	"github.com/xuri/excelize/v2"
 	"strconv"
@@ -115,6 +116,7 @@ func (m *Manager) SetStyle(key int, value *excelize.Style) {
 	si, _ := m.file.NewStyle(value)
 	m.styleIndices[key] = si
 }
+
 func (m *Manager) SetCondStyle(key int, value *excelize.Style) {
 	si, _ := m.file.NewConditionalStyle(value)
 	m.styleIndices[key] = si
@@ -169,12 +171,6 @@ func (m *Manager) calculateDebtMatrix() {
 }
 
 func (m *Manager) writeDebtMatrix() {
-	conditionalFormatCriteria0 := fmt.Sprintf("=AND(MOD(ROW(), 2)=0,(ROW()-%d)<>(COLUMN()-%d))",
-		m.debtMatrixTable.RowOffset, m.debtMatrixTable.ColumnOffset)
-
-	conditionalFormatCriteria1 := fmt.Sprintf("=AND(MOD(ROW(), 2)=1,(ROW()-%d)<>(COLUMN()-%d))",
-		m.debtMatrixTable.RowOffset, m.debtMatrixTable.ColumnOffset)
-
 	m.debtMatrixTable.WriteRows(table.WriteRowsParams{
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			*mergeCount = m.debtMatrixTable.ColumnCount
@@ -211,14 +207,11 @@ func (m *Manager) writeDebtMatrix() {
 		},
 		ColumnWidth: 20,
 		RowCount:    m.MembersCount() + 1,
-		ConditionalStyles: []*table.ConditionalStyle{
-			{1, 1, m.MembersCount(), m.MembersCount(), []excelize.ConditionalFormatOptions{
-				{Type: "formula", Criteria: conditionalFormatCriteria0, Format: m.GetStyle(alternate0Style)},
-			}},
-			{1, 1, m.MembersCount(), m.MembersCount(), []excelize.ConditionalFormatOptions{
-				{Type: "formula", Criteria: conditionalFormatCriteria1, Format: m.GetStyle(alternate1Style)},
-			}},
-		},
+		ConditionalStyles: style.Alternate(m.GetStyle(alternate0Style), m.GetStyle(alternate1Style)).
+			OmitDiagonal(m.debtMatrixTable.RowOffset, m.debtMatrixTable.ColumnOffset).
+			WithStart(1, 1).
+			WithEnd(m.MembersCount(), m.MembersCount()).
+			Build(),
 	})
 }
 
@@ -341,20 +334,11 @@ func initializeTransactions(m *Manager) {
 			}
 			return 0, false
 		},
-		ConditionalStyles: []*table.ConditionalStyle{
-			{0, 0, 0, m.transactionsTable.ColumnCount - 1,
-				[]excelize.ConditionalFormatOptions{
-					{Type: "formula", Criteria: "=MOD(ROW(), 3)=2", Format: m.GetStyle(alternate0Style)},
-				}},
-			{0, 0, 0, m.transactionsTable.ColumnCount - 1,
-				[]excelize.ConditionalFormatOptions{
-					{Type: "formula", Criteria: "=MOD(ROW(), 3)=0", Format: m.GetStyle(alternate1Style)},
-				}},
-			{0, 0, 0, m.transactionsTable.ColumnCount - 1,
-				[]excelize.ConditionalFormatOptions{
-					{Type: "formula", Criteria: "=MOD(ROW(), 3)=1", Format: m.GetStyle(alternate2Style)},
-				}},
-		},
+		ConditionalStyles: style.Alternate(m.GetStyle(alternate0Style), m.GetStyle(alternate1Style), m.GetStyle(alternate2Style)).
+			WithStart(0, 0).
+			WithEnd(0, m.transactionsTable.ColumnCount-1).
+			WithModOffset(2).
+			Build(),
 	})
 }
 
@@ -383,20 +367,10 @@ func initializeExpenses(m *Manager) {
 			}
 			return 0, false
 		},
-		ConditionalStyles: []*table.ConditionalStyle{
-			{0, 0, 0, m.expensesLeftTable.ColumnCount + m.expensesRightTable.ColumnCount - 1,
-				[]excelize.ConditionalFormatOptions{
-					{Type: "formula", Criteria: "=MOD(ROW(), 3)=0", Format: m.GetStyle(alternate0Style)},
-				}},
-			{0, 0, 0, m.expensesLeftTable.ColumnCount + m.expensesRightTable.ColumnCount - 1,
-				[]excelize.ConditionalFormatOptions{
-					{Type: "formula", Criteria: "=MOD(ROW(), 3)=1", Format: m.GetStyle(alternate1Style)},
-				}},
-			{0, 0, 0, m.expensesLeftTable.ColumnCount + m.expensesRightTable.ColumnCount - 1,
-				[]excelize.ConditionalFormatOptions{
-					{Type: "formula", Criteria: "=MOD(ROW(), 3)=2", Format: m.GetStyle(alternate2Style)},
-				}},
-		},
+		ConditionalStyles: style.Alternate(m.GetStyle(alternate0Style), m.GetStyle(alternate1Style), m.GetStyle(alternate2Style)).
+			WithStart(0, 0).
+			WithEnd(0, m.expensesLeftTable.ColumnCount+m.expensesRightTable.ColumnCount-1).
+			Build(),
 	})
 
 	var weightCells []string
