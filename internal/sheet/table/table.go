@@ -65,7 +65,13 @@ func (t *Table) WriteRows(params WriteRowsParams) {
 		params.RowWriter(r, cells)
 		t.writeRowCells(r, cells, 1)
 		resetWCells(cells)
+	}
 
+	for _, condStyle := range params.ConditionalStyles {
+		rangeRef := fmt.Sprintf("%s:%s",
+			t.GetCell(condStyle.StartRow, condStyle.StartCol), t.GetCell(condStyle.EndRow, condStyle.EndCol))
+		err := t.File.SetConditionalFormat(t.SheetName, rangeRef, condStyle.Options)
+		t.callErrorHandler(err)
 	}
 }
 
