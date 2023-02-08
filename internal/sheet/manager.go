@@ -306,6 +306,10 @@ func initializeMembers(m *Manager) {
 			}
 			return 0, false
 		},
+		ConditionalStyles: style.Alternate(m.GetStyle(alternate0Style), m.GetStyle(alternate1Style)).
+			WithStart(0, 0).
+			WithEnd(m.MembersCount()-1, 1).
+			Build(),
 	})
 }
 
