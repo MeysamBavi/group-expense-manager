@@ -221,20 +221,31 @@ func (m *Manager) writeBaseState() {
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			m.members.Range(func(i int, member *model.Member) {
 				cells[i+1].Value = member.Name
+				cells[i+1].Style = newInt(m.GetStyle(headerBoxStyle))
 			})
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
 			cells[0].Value = m.members.RequireMemberByIndex(rowNumber).Name
+			cells[0].Style = newInt(m.GetStyle(headerBoxStyle))
 			for i := 0; i < m.MembersCount(); i++ {
 				amount := m.baseState[rowNumber][i].ToNumeral()
 				cells[i+1].Value = amount
 				if amount == 0 {
 					cells[i+1].Value = ""
 				}
-				cells[i+1].Style = newInt(m.GetStyle(moneyStyle))
+				if rowNumber == i {
+					cells[i+1].Style = newInt(m.GetStyle(alternateBlockStyle))
+				} else {
+					cells[i+1].Style = newInt(m.GetStyle(moneyStyle))
+				}
 			}
 		},
 		ColumnWidth: 20,
+		ConditionalStyles: style.Alternate(m.GetStyle(alternate0Style), m.GetStyle(alternate1Style)).
+			OmitDiagonal(0, 0).
+			WithStart(0, 1).
+			WithEnd(m.MembersCount()-1, m.MembersCount()).
+			Build(),
 	})
 }
 
