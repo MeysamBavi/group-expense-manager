@@ -1,10 +1,14 @@
 package table
 
+type StylerFunc func(n int) (int, bool)
+
 type WriteRowsParams struct {
 	HeaderWriter func(cells []*WCell, mergeCount *int)
 	RowWriter    func(rowNumber int, cells []*WCell)
 	ColumnWidth  float64
 	RowCount     int
+	ColumnStyler StylerFunc
+	RowStyler    StylerFunc
 }
 
 type WCell struct {

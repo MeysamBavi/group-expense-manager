@@ -29,11 +29,29 @@ func (t *Table) WriteRows(params WriteRowsParams) {
 
 	if params.ColumnWidth > 0 {
 		err := t.File.SetColWidth(t.SheetName,
-			t.getColumn(t.ColumnOffset),
-			t.getColumn(t.ColumnCount+t.ColumnOffset-1),
+			t.getColumn(0),
+			t.getColumn(t.ColumnCount-1),
 			params.ColumnWidth,
 		)
 		t.callErrorHandler(err)
+	}
+
+	if params.ColumnStyler != nil {
+		for c := 0; c < t.ColumnCount; c++ {
+			if style, ok := params.ColumnStyler(c); ok {
+				err := t.File.SetColStyle(t.SheetName, t.getColumn(c), style)
+				t.callErrorHandler(err)
+			}
+		}
+	}
+
+	if params.RowStyler != nil {
+		for r := -1; r < params.RowCount; r++ {
+			if style, ok := params.RowStyler(r); ok {
+				err := t.File.SetCellStyle(t.SheetName, t.GetCell(r, 0), t.GetCell(r, t.ColumnCount-1), style)
+				t.callErrorHandler(err)
+			}
+		}
 	}
 
 	mergeCount := 1
@@ -47,6 +65,7 @@ func (t *Table) WriteRows(params WriteRowsParams) {
 		params.RowWriter(r, cells)
 		t.writeRowCells(r, cells, 1)
 		resetWCells(cells)
+
 	}
 }
 
@@ -76,21 +95,22 @@ func (t *Table) writeRowCells(row int, cells []*WCell, multiplier int) {
 }
 
 func (t *Table) GetCell(rowN, colN int) string {
-	rowN += t.RowOffset
-	colN += t.ColumnOffset
-
-	if rowN <= 0 || colN <= 0 {
-		panic(errors.New("row number and column number must be positive"))
-	}
-
-	return t.getColumn(colN) + t.getRow(rowN)
+	return fmt.Sprintf("%s%d", t.getColumn(colN), t.getRow(rowN))
 }
 
-func (t *Table) getRow(rowN int) string {
-	return fmt.Sprintf("%d", rowN)
+func (t *Table) getRow(rowN int) int {
+	rowN += t.RowOffset
+	if rowN <= 0 {
+		panic(errors.New("row number must be positive"))
+	}
+	return rowN
 }
 
 func (t *Table) getColumn(colN int) string {
+	colN += t.ColumnOffset
+	if colN <= 0 {
+		panic(errors.New("column number must be positive"))
+	}
 
 	colDigits := make([]rune, 0, 1)
 	colN -= 1
