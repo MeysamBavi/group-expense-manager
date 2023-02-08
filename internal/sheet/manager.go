@@ -20,7 +20,6 @@ const (
 	transactionsSheet = "transactions"
 	debtMatrixSheet   = "debt-matrix"
 	baseStateSheet    = "base state"
-	metadataSheet     = "metadata (unmodifiable)"
 )
 
 const (
@@ -281,11 +280,6 @@ func createSheets(m *Manager) {
 	fatalIfNotNil(err)
 	m.sheetIndices[baseStateSheet] = i
 	defer initializeBaseState(m)
-
-	i, err = m.file.NewSheet(metadataSheet)
-	fatalIfNotNil(err)
-	m.sheetIndices[metadataSheet] = i
-	defer initializeMetadata(m)
 }
 
 func initializeMembers(m *Manager) {
@@ -312,8 +306,6 @@ func initializeMembers(m *Manager) {
 			Build(),
 	})
 }
-
-func initializeMetadata(m *Manager) {}
 
 func initializeBaseState(m *Manager) {
 	m.baseState = emptyMatrix(m.MembersCount())
