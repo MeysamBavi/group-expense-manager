@@ -173,12 +173,15 @@ func (m *Manager) writeDebtMatrix() {
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			*mergeCount = m.debtMatrixTable.ColumnCount
 			cells[0].Value = "Run 'update' command to update the debt matrix. Person in the row should pay the person in the column."
+			cells[0].Style = newInt(m.GetStyle(helpStyle))
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
 			if rowNumber == 0 {
 				cells[0].Value = fmt.Sprintf("last update: %s", time.Now().Format(timeLayout))
+				cells[0].Style = newInt(m.GetStyle(lastUpdateStyle))
 				m.members.Range(func(i int, member *model.Member) {
 					cells[i+1].Value = member.Name
+					cells[i+1].Style = newInt(m.GetStyle(headerBoxStyle))
 				})
 				return
 			}
@@ -186,6 +189,7 @@ func (m *Manager) writeDebtMatrix() {
 			memberIndex := rowNumber - 1
 
 			cells[0].Value = m.members.RequireMemberByIndex(memberIndex).Name
+			cells[0].Style = newInt(m.GetStyle(headerBoxStyle))
 			for i := 0; i < m.MembersCount(); i++ {
 				amount := m.debtMatrix[memberIndex][i].ToNumeral()
 				cells[i+1].Value = amount
@@ -197,6 +201,14 @@ func (m *Manager) writeDebtMatrix() {
 		},
 		ColumnWidth: 20,
 		RowCount:    m.MembersCount() + 1,
+		ConditionalStyles: []*table.ConditionalStyle{
+			{1, 1, m.MembersCount(), m.MembersCount(), []excelize.ConditionalFormatOptions{
+				{Type: "formula", Criteria: "=MOD(ROW(), 2)=0", Format: m.GetStyle(alternate0Style)},
+			}},
+			{1, 1, m.MembersCount(), m.MembersCount(), []excelize.ConditionalFormatOptions{
+				{Type: "formula", Criteria: "=MOD(ROW(), 2)=1", Format: m.GetStyle(alternate1Style)},
+			}},
+		},
 	})
 }
 

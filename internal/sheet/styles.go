@@ -27,8 +27,8 @@ const (
 	defaultBorderColor   = "#D0CECE"
 	borderColor          = "#404040"
 	defaultFontColor     = "#000000"
-	helpBGColor          = "#FFFFCC"
-	helpFontColor        = "#9C6500"
+	helpBGColor          = "#BFF1FF"
+	helpFontColor        = "#114654"
 	alternate0BGColor    = "#FFFFFF"
 	alternate1BGColor    = "#E6F9FF"
 	alternate2BGColor    = "#C2E8F2"
@@ -48,7 +48,8 @@ func createStyles(m *Manager) {
 		WithFullBoarders(borderColor).WithCenterAlignment().Build())
 	m.SetStyle(blockStyle, builder.WithBackground(blockBGColor).Build())
 	m.SetStyle(lastUpdateStyle, builder.WithFont(8, false, defaultFontColor).WithCenterAlignment().Build())
-	m.SetStyle(helpStyle, builder.WithBackground(helpBGColor).WithFont(9, true, helpFontColor).Build())
+	m.SetStyle(helpStyle, builder.WithBackground(helpBGColor).
+		WithFont(9, true, helpFontColor).WithCenterAlignment().WithFullBoarders(borderColor).Build())
 	m.SetStyle(rightBorderStyle, builder.WithRightBorderOnly(borderColor).Build())
 	m.SetStyle(leftBorderStyle, builder.WithLeftBorderOnly(borderColor).Build())
 
