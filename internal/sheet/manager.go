@@ -115,6 +115,10 @@ func (m *Manager) SetStyle(key int, value *excelize.Style) {
 	si, _ := m.file.NewStyle(value)
 	m.styleIndices[key] = si
 }
+func (m *Manager) SetCondStyle(key int, value *excelize.Style) {
+	si, _ := m.file.NewConditionalStyle(value)
+	m.styleIndices[key] = si
+}
 
 func (m *Manager) GetStyle(key int) int {
 	return m.styleIndices[key]
@@ -276,13 +280,6 @@ func initializeMembers(m *Manager) {
 			}
 			return 0, false
 		},
-		ColumnStyler: func(col int) (int, bool) {
-			if col == 0 {
-				return m.GetStyle(rightBorderStyle), true
-			} else {
-				return m.GetStyle(leftBorderStyle), true
-			}
-		},
 	})
 }
 
@@ -337,7 +334,24 @@ func initializeExpenses(m *Manager) {
 			cells[3].Value = 623000
 			totalAmountCell = m.expensesLeftTable.GetCell(rowNumber, 3)
 		},
-		ColumnWidth: 18,
+		ColumnWidth: 16,
+		RowStyler: func(row int) (int, bool) {
+			if row == -1 {
+				return m.GetStyle(secondHeaderBoxStyle), true
+			}
+			return 0, false
+		},
+		ConditionalStyles: []*table.ConditionalStyle{
+			{0, 0, 0, 4 + 2*m.MembersCount() - 1, []excelize.ConditionalFormatOptions{
+				{Type: "formula", Criteria: "=MOD(ROW(), 3)=0", Format: m.GetStyle(alternate0Style)},
+			}},
+			{0, 0, 0, 4 + 2*m.MembersCount() - 1, []excelize.ConditionalFormatOptions{
+				{Type: "formula", Criteria: "=MOD(ROW(), 3)=1", Format: m.GetStyle(alternate1Style)},
+			}},
+			{0, 0, 0, 4 + 2*m.MembersCount() - 1, []excelize.ConditionalFormatOptions{
+				{Type: "formula", Criteria: "=MOD(ROW(), 3)=2", Format: m.GetStyle(alternate2Style)},
+			}},
+		},
 	})
 
 	var weightCells []string
@@ -362,7 +376,17 @@ func initializeExpenses(m *Manager) {
 				}
 			}
 		},
-		ColumnWidth: 14,
+		RowStyler: func(row int) (int, bool) {
+			if row == -1 {
+				return m.GetStyle(headerBoxStyle), true
+			}
+			if row == 0 {
+				return m.GetStyle(secondHeaderBoxStyle), true
+			}
+
+			return 0, false
+		},
+		ColumnWidth: 11,
 	})
 }
 
