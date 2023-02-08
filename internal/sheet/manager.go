@@ -313,6 +313,26 @@ func initializeTransactions(m *Manager) {
 			cells[3].Value = 223000
 		},
 		ColumnWidth: 18,
+		RowStyler: func(row int) (int, bool) {
+			if row == -1 {
+				return m.GetStyle(headerBoxStyle), true
+			}
+			return 0, false
+		},
+		ConditionalStyles: []*table.ConditionalStyle{
+			{0, 0, 0, m.transactionsTable.ColumnCount - 1,
+				[]excelize.ConditionalFormatOptions{
+					{Type: "formula", Criteria: "=MOD(ROW(), 3)=2", Format: m.GetStyle(alternate0Style)},
+				}},
+			{0, 0, 0, m.transactionsTable.ColumnCount - 1,
+				[]excelize.ConditionalFormatOptions{
+					{Type: "formula", Criteria: "=MOD(ROW(), 3)=0", Format: m.GetStyle(alternate1Style)},
+				}},
+			{0, 0, 0, m.transactionsTable.ColumnCount - 1,
+				[]excelize.ConditionalFormatOptions{
+					{Type: "formula", Criteria: "=MOD(ROW(), 3)=1", Format: m.GetStyle(alternate2Style)},
+				}},
+		},
 	})
 }
 
@@ -342,15 +362,18 @@ func initializeExpenses(m *Manager) {
 			return 0, false
 		},
 		ConditionalStyles: []*table.ConditionalStyle{
-			{0, 0, 0, 4 + 2*m.MembersCount() - 1, []excelize.ConditionalFormatOptions{
-				{Type: "formula", Criteria: "=MOD(ROW(), 3)=0", Format: m.GetStyle(alternate0Style)},
-			}},
-			{0, 0, 0, 4 + 2*m.MembersCount() - 1, []excelize.ConditionalFormatOptions{
-				{Type: "formula", Criteria: "=MOD(ROW(), 3)=1", Format: m.GetStyle(alternate1Style)},
-			}},
-			{0, 0, 0, 4 + 2*m.MembersCount() - 1, []excelize.ConditionalFormatOptions{
-				{Type: "formula", Criteria: "=MOD(ROW(), 3)=2", Format: m.GetStyle(alternate2Style)},
-			}},
+			{0, 0, 0, m.expensesLeftTable.ColumnCount + m.expensesRightTable.ColumnCount - 1,
+				[]excelize.ConditionalFormatOptions{
+					{Type: "formula", Criteria: "=MOD(ROW(), 3)=0", Format: m.GetStyle(alternate0Style)},
+				}},
+			{0, 0, 0, m.expensesLeftTable.ColumnCount + m.expensesRightTable.ColumnCount - 1,
+				[]excelize.ConditionalFormatOptions{
+					{Type: "formula", Criteria: "=MOD(ROW(), 3)=1", Format: m.GetStyle(alternate1Style)},
+				}},
+			{0, 0, 0, m.expensesLeftTable.ColumnCount + m.expensesRightTable.ColumnCount - 1,
+				[]excelize.ConditionalFormatOptions{
+					{Type: "formula", Criteria: "=MOD(ROW(), 3)=2", Format: m.GetStyle(alternate2Style)},
+				}},
 		},
 	})
 
