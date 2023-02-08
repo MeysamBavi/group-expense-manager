@@ -270,6 +270,19 @@ func initializeMembers(m *Manager) {
 			cells[1].Value = m.members.RequireMemberByIndex(rowNumber).CardNumber
 		},
 		ColumnWidth: 32,
+		RowStyler: func(row int) (int, bool) {
+			if row == -1 {
+				return m.GetStyle(headerBoxStyle), true
+			}
+			return 0, false
+		},
+		ColumnStyler: func(col int) (int, bool) {
+			if col == 0 {
+				return m.GetStyle(rightBorderStyle), true
+			} else {
+				return m.GetStyle(leftBorderStyle), true
+			}
+		},
 	})
 }
 

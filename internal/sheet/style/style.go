@@ -6,8 +6,8 @@ type Builder struct {
 	style *excelize.Style
 }
 
-func Empty() Builder {
-	return Builder{
+func Empty() *Builder {
+	return &Builder{
 		new(excelize.Style),
 	}
 }
@@ -25,20 +25,34 @@ func (b *Builder) WithBackground(background string) *Builder {
 	return b
 }
 
-func (b *Builder) WithFullBoarders(borderColor string) *Builder {
+func (b *Builder) WithRightBorderOnly(color string) *Builder {
 	b.style.Border = []excelize.Border{
-		{Type: "left", Color: borderColor},
-		{Type: "top", Color: borderColor},
-		{Type: "bottom", Color: borderColor},
-		{Type: "right", Color: borderColor},
+		{Type: "right", Color: color, Style: 1},
+	}
+	return b
+}
+func (b *Builder) WithLeftBorderOnly(color string) *Builder {
+	b.style.Border = []excelize.Border{
+		{Type: "left", Color: color, Style: 1},
 	}
 	return b
 }
 
-func (b *Builder) WithFont(size float64, bold bool) *Builder {
+func (b *Builder) WithFullBoarders(borderColor string) *Builder {
+	b.style.Border = []excelize.Border{
+		{Type: "left", Color: borderColor, Style: 1},
+		{Type: "top", Color: borderColor, Style: 1},
+		{Type: "bottom", Color: borderColor, Style: 1},
+		{Type: "right", Color: borderColor, Style: 1},
+	}
+	return b
+}
+
+func (b *Builder) WithFont(size float64, bold bool, color string) *Builder {
 	b.style.Font = &excelize.Font{
-		Bold: bold,
-		Size: size,
+		Bold:  bold,
+		Size:  size,
+		Color: color,
 	}
 	return b
 }
@@ -46,6 +60,7 @@ func (b *Builder) WithFont(size float64, bold bool) *Builder {
 func (b *Builder) WithCenterAlignment() *Builder {
 	b.style.Alignment = &excelize.Alignment{
 		Horizontal: "center",
+		Vertical:   "center",
 	}
 	return b
 }
