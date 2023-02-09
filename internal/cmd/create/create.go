@@ -62,6 +62,7 @@ func run(_ *cobra.Command, _ []string) {
 		members = getMembersFromFile(membersFile)
 	}
 
+	fmt.Println("Members:")
 	members.Range(func(_ int, member *model.Member) {
 		fmt.Println(*member)
 	})
@@ -75,6 +76,8 @@ func run(_ *cobra.Command, _ []string) {
 	if err != nil {
 		log.FatalError(err)
 	}
+
+	fmt.Println("Spreadsheet created successfully")
 }
 
 func getMembersFromFile(file string) *store.MemberStore {

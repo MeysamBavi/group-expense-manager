@@ -91,25 +91,39 @@ func newBaseManager() *Manager {
 	}
 }
 
-func (m *Manager) PrintData() {
+func (m *Manager) PrintData(summarize bool) {
+	fmt.Println("Members:")
 	m.members.Range(func(index int, member *model.Member) {
 		fmt.Println(*member)
 	})
 
-	for _, expense := range m.expenses {
-		fmt.Println(*expense)
+	fmt.Println("Expenses:")
+	if summarize {
+		fmt.Println("Count:", len(m.expenses))
+	} else {
+		for _, expense := range m.expenses {
+			fmt.Println(*expense)
+		}
 	}
 
-	for _, transaction := range m.transactions {
-		fmt.Println(*transaction)
+	fmt.Println("Transactions:")
+	if summarize {
+		fmt.Println("Count:", len(m.transactions))
+	} else {
+		for _, transaction := range m.transactions {
+			fmt.Println(*transaction)
+		}
 	}
 
+	fmt.Println("Debt Matrix:")
 	fmt.Println(m.debtMatrix)
 
+	fmt.Println("Settlements:")
 	for _, settlement := range m.settlements {
 		fmt.Println(*settlement)
 	}
 
+	fmt.Println("Base State:")
 	fmt.Println(m.baseState)
 }
 

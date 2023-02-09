@@ -2,6 +2,7 @@ package update
 
 import (
 	"errors"
+	"fmt"
 	"github.com/MeysamBavi/group-expense-manager/internal/log"
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet"
 	"github.com/spf13/cobra"
@@ -11,6 +12,8 @@ import (
 
 var (
 	overwrite bool
+	shortLog  bool
+	longLog   bool
 )
 
 func AddToRoot(root *cobra.Command) {
@@ -40,6 +43,22 @@ func newUpdateCommand() *cobra.Command {
 		"if set, overwrites the existing file instead of creating a new copy",
 	)
 
+	cmd.Flags().BoolVarP(
+		&shortLog,
+		"short-log",
+		"s",
+		false,
+		"logs loaded data in a short format. does not log expenses and transactions",
+	)
+
+	cmd.Flags().BoolVarP(
+		&longLog,
+		"long-log",
+		"l",
+		false,
+		"logs loaded data in a long format. logs expenses and transactions",
+	)
+
 	return cmd
 }
 
@@ -51,7 +70,11 @@ func run(_ *cobra.Command, args []string) {
 	}
 
 	manager.UpdateDebtors()
-	manager.PrintData()
+	if shortLog {
+		manager.PrintData(true)
+	} else if longLog {
+		manager.PrintData(false)
+	}
 	if !overwrite {
 		ext := path.Ext(fileName)
 		fileName = strings.TrimSuffix(fileName, ext) + "-updated" + ext
@@ -60,4 +83,6 @@ func run(_ *cobra.Command, args []string) {
 	if err != nil {
 		log.FatalError(err)
 	}
+
+	fmt.Printf("Updated debt matrix and saved to %s\n", fileName)
 }
