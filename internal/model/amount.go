@@ -9,6 +9,10 @@ type Amount int64
 
 const AmountZero = Amount(0)
 
+func (a Amount) Negative() Amount {
+	return -a
+}
+
 func (a Amount) Add(b Amount) Amount {
 	return a + b
 }

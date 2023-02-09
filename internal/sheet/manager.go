@@ -8,6 +8,7 @@ import (
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet/style"
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet/table"
 	"github.com/xuri/excelize/v2"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -254,7 +255,62 @@ func (m *Manager) writeBaseState() {
 }
 
 func (m *Manager) calculateSettlements() {
+	type balance struct {
+		name   string
+		amount model.Amount
+	}
 
+	balances := make([]balance, 0, m.MembersCount())
+	m.members.Range(func(index int, member *model.Member) {
+		gives, receives := model.AmountZero, model.AmountZero
+		for i := 0; i < m.MembersCount(); i++ {
+			receives = receives.Add(m.debtMatrix[i][index])
+		}
+		for i := 0; i < m.MembersCount(); i++ {
+			gives = gives.Add(m.debtMatrix[index][i])
+		}
+		balances = append(balances, balance{
+			name:   member.Name,
+			amount: receives.Sub(gives),
+		})
+	})
+
+	sort.SliceStable(balances, func(i, j int) bool {
+		return balances[i].amount.LessThan(balances[j].amount)
+	})
+
+	settlements := make([]*model.Transaction, 0)
+	addSettlement := func(receiver, payer int, amount model.Amount) {
+		if amount.LessThan(model.AmountZero) {
+			receiver, payer = payer, receiver
+			amount = amount.Negative()
+		}
+		settlements = append(settlements, &model.Transaction{
+			ReceiverName: balances[receiver].name,
+			PayerName:    balances[payer].name,
+			Amount:       amount,
+		})
+	}
+	lowest, highest := 0, len(balances)-1
+	for highest > lowest {
+		diff := balances[highest].amount.Add(balances[lowest].amount)
+		if diff.LessThan(model.AmountZero) {
+			addSettlement(highest, lowest, balances[highest].amount)
+			highest--
+		} else if diff == model.AmountZero {
+			addSettlement(highest, lowest, balances[highest].amount)
+			highest--
+			lowest++
+		} else {
+			addSettlement(highest, lowest, balances[lowest].amount)
+			lowest++
+		}
+	}
+
+	sort.SliceStable(settlements, func(i, j int) bool {
+		return settlements[i].Amount.LessThan(settlements[j].Amount)
+	})
+	m.settlements = settlements
 }
 
 func (m *Manager) writeSettlements() {
@@ -275,8 +331,8 @@ func (m *Manager) writeSettlements() {
 			rowNumber--
 			cells[0].Value = m.settlements[rowNumber].ReceiverName
 			cells[1].Value = m.settlements[rowNumber].PayerName
-			cells[3].Value = m.settlements[rowNumber].Amount.ToNumeral()
-			cells[3].Style = newInt(m.GetStyle(moneyStyle))
+			cells[2].Value = m.settlements[rowNumber].Amount.ToNumeral()
+			cells[2].Style = newInt(m.GetStyle(moneyStyle))
 		},
 		ColumnWidth: 18,
 		RowStyler: func(row int) (int, bool) {
