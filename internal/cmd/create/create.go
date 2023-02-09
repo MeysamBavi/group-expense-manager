@@ -9,6 +9,7 @@ import (
 	"github.com/MeysamBavi/group-expense-manager/internal/model"
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet"
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet/store"
+	"github.com/MeysamBavi/group-expense-manager/internal/sheet/style"
 	"github.com/spf13/cobra"
 	"os"
 	"regexp"
@@ -18,6 +19,18 @@ import (
 var (
 	membersFile string
 	outputFile  string
+	theme       string
+)
+
+var (
+	validThemes = map[string]*style.Theme{
+		"blue":   style.BlueTheme(),
+		"green":  style.GreenTheme(),
+		"red":    style.RedTheme(),
+		"yellow": style.YellowTheme(),
+		"purple": style.PurpleTheme(),
+	}
+	defaultTheme = "blue"
 )
 
 func AddToRoot(root *cobra.Command) {
@@ -51,6 +64,14 @@ Format of every row in the csv file should be "name,cardNumber"`,
 		"specifies the output file name and path",
 	)
 
+	cmd.Flags().StringVarP(
+		&theme,
+		"theme",
+		"t",
+		defaultTheme,
+		"specifies the color theme of the spreadsheet. valid values are "+strings.Join(getValidThemes(), ", "),
+	)
+
 	return cmd
 }
 
@@ -71,7 +92,7 @@ func run(_ *cobra.Command, _ []string) {
 		log.FatalError(errors.New("number of members should be more than 1"))
 	}
 
-	manager := sheet.NewManager(members)
+	manager := sheet.NewManager(members, getTheme())
 	err := manager.SaveAs(outputFile)
 	if err != nil {
 		log.FatalError(err)
@@ -142,4 +163,21 @@ func getMembersFromStdin() *store.MemberStore {
 	}
 
 	return members
+}
+
+func getValidThemes() []string {
+	themes := make([]string, 0, len(validThemes))
+	for k := range validThemes {
+		themes = append(themes, k)
+	}
+	return themes
+}
+
+func getTheme() *style.Theme {
+	theme, ok := validThemes[theme]
+	if !ok {
+		return validThemes[defaultTheme]
+	}
+
+	return theme
 }

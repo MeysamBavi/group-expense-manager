@@ -46,12 +46,14 @@ type Manager struct {
 	debtMatrixTable    *table.Table
 	settlementsTable   *table.Table
 	baseStateTable     *table.Table
+	theme              *style.Theme
 }
 
-func NewManager(memberStore *store.MemberStore) *Manager {
+func NewManager(memberStore *store.MemberStore, theme *style.Theme) *Manager {
 	m := newBaseManager()
 	m.file = excelize.NewFile()
 	m.members = memberStore
+	m.theme = theme
 
 	m.membersTable = newMembersTable(m.file)
 	setTablesExceptMembers(m)
@@ -72,7 +74,7 @@ func LoadManager(fileName string) (*Manager, error) {
 	m.file = file
 
 	m.membersTable = newMembersTable(m.file)
-	m.members = loadMembers(m.membersTable)
+	m.members, m.theme = loadMembersAndTheme(m.membersTable)
 	setTablesExceptMembers(m)
 
 	m.expenses = loadExpenses(m.expensesFullTable, m.members)
@@ -235,6 +237,7 @@ func (m *Manager) writeDebtMatrix() {
 		ConditionalStyles: style.Alternate(m.getStyle(alternate0Style), m.getStyle(alternate1Style)).
 			OmitDiagonal(m.debtMatrixTable.RowOffset, m.debtMatrixTable.ColumnOffset).
 			WithStart(1, 1).
+			WithModOffset(1).
 			WithEnd(m.MembersCount(), m.MembersCount()).
 			Build(),
 	})
@@ -410,12 +413,17 @@ func createSheets(m *Manager) {
 
 func initializeMembers(m *Manager) {
 	m.membersTable.WriteRows(table.WriteRowsParams{
-		RowCount: m.MembersCount(),
+		RowCount: m.MembersCount() + 1,
 		HeaderWriter: func(cells []*table.WCell, _ *int) {
 			cells[0].Value = "Name"
 			cells[1].Value = "Card Number"
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
+			if rowNumber == m.MembersCount() {
+				cells[0].Value = m.theme.Code()
+				cells[0].Style = newInt(m.getStyle(invisibleStyle))
+				return
+			}
 			cells[0].Value = m.members.RequireMemberByIndex(rowNumber).Name
 			cells[1].Value = m.members.RequireMemberByIndex(rowNumber).CardNumber
 		},
@@ -551,10 +559,15 @@ func initializeSettlements(m *Manager) {
 	m.writeSettlements()
 }
 
-func loadMembers(t *table.Table) *store.MemberStore {
+func loadMembersAndTheme(t *table.Table) (*store.MemberStore, *style.Theme) {
 	members := store.NewMemberStore()
+	var theme *style.Theme
 	t.ReadRows(table.ReadRowsParams{
 		RowReader: func(rowNumber int, cells []*table.RCell) {
+			if cells[0].Value[0] == '#' && cells[1].Value == "" {
+				theme = style.ThemeFromCode(cells[0].Value)
+				return
+			}
 			err := members.AddMember(&model.Member{
 				Name:       strings.TrimSpace(cells[0].Value),
 				CardNumber: strings.TrimSpace(cells[1].Value),
@@ -565,7 +578,7 @@ func loadMembers(t *table.Table) *store.MemberStore {
 		UnknownRowCount: true,
 	})
 
-	return members
+	return members, theme
 }
 
 func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
