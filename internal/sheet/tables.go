@@ -20,6 +20,9 @@ const (
 	debtMatrixRowOffset = 2
 	debtMatrixColOffset = 1
 
+	settlementsRowOffset = 2
+	settlementsColOffset = 1
+
 	baseStateRowOffset = 2
 	baseStateColOffset = 1
 )
@@ -86,6 +89,17 @@ func newDebtMatrixTable(file *excelize.File, membersCount int) *table.Table {
 		RowOffset:    debtMatrixRowOffset,
 		ColumnOffset: debtMatrixColOffset,
 		ColumnCount:  membersCount + 1,
+		ErrorHandler: fatalIfNotNil,
+	}
+}
+
+func newSettlementsTable(file *excelize.File) *table.Table {
+	return &table.Table{
+		File:         file,
+		SheetName:    settlementsSheet,
+		RowOffset:    settlementsRowOffset,
+		ColumnOffset: settlementsColOffset,
+		ColumnCount:  3,
 		ErrorHandler: fatalIfNotNil,
 	}
 }

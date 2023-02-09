@@ -18,7 +18,8 @@ const (
 	membersSheet      = "members"
 	expensesSheet     = "expenses"
 	transactionsSheet = "transactions"
-	debtMatrixSheet   = "debt-matrix"
+	debtMatrixSheet   = "debt matrix"
+	settlementsSheet  = "settlements"
 	baseStateSheet    = "base state"
 )
 
@@ -33,6 +34,7 @@ type Manager struct {
 	transactions       []*model.Transaction
 	debtMatrix         [][]model.Amount
 	baseState          [][]model.Amount
+	settlements        []*model.Transaction
 	sheetIndices       map[string]int
 	styleIndices       map[int]int
 	membersTable       *table.Table
@@ -41,6 +43,7 @@ type Manager struct {
 	expensesFullTable  *table.Table
 	transactionsTable  *table.Table
 	debtMatrixTable    *table.Table
+	settlementsTable   *table.Table
 	baseStateTable     *table.Table
 }
 
@@ -132,6 +135,8 @@ func (m *Manager) GetSheetIndex(name string) int {
 func (m *Manager) UpdateDebtors() {
 	m.calculateDebtMatrix()
 	m.writeDebtMatrix()
+	m.calculateSettlements()
+	m.writeSettlements()
 }
 
 func (m *Manager) calculateDebtMatrix() {
@@ -248,12 +253,52 @@ func (m *Manager) writeBaseState() {
 	})
 }
 
+func (m *Manager) calculateSettlements() {
+
+}
+
+func (m *Manager) writeSettlements() {
+	m.settlementsTable.WriteRows(table.WriteRowsParams{
+		RowCount: len(m.settlements) + 1,
+		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
+			*mergeCount = m.settlementsTable.ColumnCount
+			cells[0].Value = "Run 'update' command to generate settlement transactions."
+			cells[0].Style = newInt(m.GetStyle(helpStyle))
+		},
+		RowWriter: func(rowNumber int, cells []*table.WCell) {
+			if rowNumber == 0 {
+				cells[0].Value = "Receiver"
+				cells[1].Value = "Payer"
+				cells[2].Value = "Amount"
+				return
+			}
+			rowNumber--
+			cells[0].Value = m.settlements[rowNumber].ReceiverName
+			cells[1].Value = m.settlements[rowNumber].PayerName
+			cells[3].Value = m.settlements[rowNumber].Amount.ToNumeral()
+			cells[3].Style = newInt(m.GetStyle(moneyStyle))
+		},
+		ColumnWidth: 18,
+		RowStyler: func(row int) (int, bool) {
+			if row == 0 {
+				return m.GetStyle(headerBoxStyle), true
+			}
+			return 0, false
+		},
+		ConditionalStyles: style.Alternate(m.GetStyle(alternate0Style), m.GetStyle(alternate1Style), m.GetStyle(alternate2Style)).
+			WithStart(1, 0).
+			WithEnd(len(m.settlements), m.settlementsTable.ColumnCount-1).
+			Build(),
+	})
+}
+
 func setTablesExceptMembers(m *Manager) {
 	m.expensesLeftTable = newExpensesLeftTable(m.file)
 	m.expensesRightTable = newExpensesRightTable(m.file, m.MembersCount())
 	m.expensesFullTable = newExpensesFullTable(m.file, m.MembersCount())
 	m.transactionsTable = newTransactionsTable(m.file)
 	m.debtMatrixTable = newDebtMatrixTable(m.file, m.MembersCount())
+	m.settlementsTable = newSettlementsTable(m.file)
 	m.baseStateTable = newBaseStateTable(m.file, m.MembersCount())
 }
 
@@ -275,6 +320,11 @@ func createSheets(m *Manager) {
 	fatalIfNotNil(err)
 	m.sheetIndices[debtMatrixSheet] = i
 	defer initializeDebtMatrix(m)
+
+	i, err = m.file.NewSheet(settlementsSheet)
+	fatalIfNotNil(err)
+	m.sheetIndices[settlementsSheet] = i
+	defer initializeSettlements(m)
 
 	i, err = m.file.NewSheet(baseStateSheet)
 	fatalIfNotNil(err)
@@ -418,6 +468,11 @@ func initializeExpenses(m *Manager) {
 		},
 		ColumnWidth: 11,
 	})
+}
+
+func initializeSettlements(m *Manager) {
+	m.settlements = make([]*model.Transaction, 0)
+	m.writeSettlements()
 }
 
 func loadMembers(t *table.Table) *store.MemberStore {
