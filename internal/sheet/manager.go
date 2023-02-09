@@ -104,6 +104,12 @@ func (m *Manager) PrintData() {
 		fmt.Println(*transaction)
 	}
 
+	fmt.Println(m.debtMatrix)
+
+	for _, settlement := range m.settlements {
+		fmt.Println(*settlement)
+	}
+
 	fmt.Println(m.baseState)
 }
 
@@ -115,29 +121,29 @@ func (m *Manager) MembersCount() int {
 	return m.members.Count()
 }
 
-func (m *Manager) SetStyle(key int, value *excelize.Style) {
-	si, _ := m.file.NewStyle(value)
-	m.styleIndices[key] = si
-}
-
-func (m *Manager) SetCondStyle(key int, value *excelize.Style) {
-	si, _ := m.file.NewConditionalStyle(value)
-	m.styleIndices[key] = si
-}
-
-func (m *Manager) GetStyle(key int) int {
-	return m.styleIndices[key]
-}
-
-func (m *Manager) GetSheetIndex(name string) int {
-	return m.sheetIndices[name]
-}
-
 func (m *Manager) UpdateDebtors() {
 	m.calculateDebtMatrix()
 	m.writeDebtMatrix()
 	m.calculateSettlements()
 	m.writeSettlements()
+}
+
+func (m *Manager) setStyle(key int, value *excelize.Style) {
+	si, _ := m.file.NewStyle(value)
+	m.styleIndices[key] = si
+}
+
+func (m *Manager) setCondStyle(key int, value *excelize.Style) {
+	si, _ := m.file.NewConditionalStyle(value)
+	m.styleIndices[key] = si
+}
+
+func (m *Manager) getStyle(key int) int {
+	return m.styleIndices[key]
+}
+
+func (m *Manager) getSheetIndex(name string) int {
+	return m.sheetIndices[name]
 }
 
 func (m *Manager) calculateDebtMatrix() {
@@ -180,15 +186,15 @@ func (m *Manager) writeDebtMatrix() {
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			*mergeCount = m.debtMatrixTable.ColumnCount
 			cells[0].Value = "Run 'update' command to update the debt matrix. Person in the row should pay the person in the column."
-			cells[0].Style = newInt(m.GetStyle(helpStyle))
+			cells[0].Style = newInt(m.getStyle(helpStyle))
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
 			if rowNumber == 0 {
 				cells[0].Value = fmt.Sprintf("last update: %s", time.Now().Format(timeLayout))
-				cells[0].Style = newInt(m.GetStyle(lastUpdateStyle))
+				cells[0].Style = newInt(m.getStyle(lastUpdateStyle))
 				m.members.Range(func(i int, member *model.Member) {
 					cells[i+1].Value = member.Name
-					cells[i+1].Style = newInt(m.GetStyle(headerBoxStyle))
+					cells[i+1].Style = newInt(m.getStyle(headerBoxStyle))
 				})
 				return
 			}
@@ -196,7 +202,7 @@ func (m *Manager) writeDebtMatrix() {
 			memberIndex := rowNumber - 1
 
 			cells[0].Value = m.members.RequireMemberByIndex(memberIndex).Name
-			cells[0].Style = newInt(m.GetStyle(headerBoxStyle))
+			cells[0].Style = newInt(m.getStyle(headerBoxStyle))
 			for i := 0; i < m.MembersCount(); i++ {
 				amount := m.debtMatrix[memberIndex][i].ToNumeral()
 				cells[i+1].Value = amount
@@ -204,15 +210,15 @@ func (m *Manager) writeDebtMatrix() {
 					cells[i+1].Value = ""
 				}
 				if memberIndex == i {
-					cells[i+1].Style = newInt(m.GetStyle(alternateBlockStyle))
+					cells[i+1].Style = newInt(m.getStyle(alternateBlockStyle))
 				} else {
-					cells[i+1].Style = newInt(m.GetStyle(moneyStyle))
+					cells[i+1].Style = newInt(m.getStyle(moneyStyle))
 				}
 			}
 		},
 		ColumnWidth: 20,
 		RowCount:    m.MembersCount() + 1,
-		ConditionalStyles: style.Alternate(m.GetStyle(alternate0Style), m.GetStyle(alternate1Style)).
+		ConditionalStyles: style.Alternate(m.getStyle(alternate0Style), m.getStyle(alternate1Style)).
 			OmitDiagonal(m.debtMatrixTable.RowOffset, m.debtMatrixTable.ColumnOffset).
 			WithStart(1, 1).
 			WithEnd(m.MembersCount(), m.MembersCount()).
@@ -226,12 +232,12 @@ func (m *Manager) writeBaseState() {
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			m.members.Range(func(i int, member *model.Member) {
 				cells[i+1].Value = member.Name
-				cells[i+1].Style = newInt(m.GetStyle(headerBoxStyle))
+				cells[i+1].Style = newInt(m.getStyle(headerBoxStyle))
 			})
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
 			cells[0].Value = m.members.RequireMemberByIndex(rowNumber).Name
-			cells[0].Style = newInt(m.GetStyle(headerBoxStyle))
+			cells[0].Style = newInt(m.getStyle(headerBoxStyle))
 			for i := 0; i < m.MembersCount(); i++ {
 				amount := m.baseState[rowNumber][i].ToNumeral()
 				cells[i+1].Value = amount
@@ -239,14 +245,14 @@ func (m *Manager) writeBaseState() {
 					cells[i+1].Value = ""
 				}
 				if rowNumber == i {
-					cells[i+1].Style = newInt(m.GetStyle(alternateBlockStyle))
+					cells[i+1].Style = newInt(m.getStyle(alternateBlockStyle))
 				} else {
-					cells[i+1].Style = newInt(m.GetStyle(moneyStyle))
+					cells[i+1].Style = newInt(m.getStyle(moneyStyle))
 				}
 			}
 		},
 		ColumnWidth: 20,
-		ConditionalStyles: style.Alternate(m.GetStyle(alternate0Style), m.GetStyle(alternate1Style)).
+		ConditionalStyles: style.Alternate(m.getStyle(alternate0Style), m.getStyle(alternate1Style)).
 			OmitDiagonal(0, 0).
 			WithStart(0, 1).
 			WithEnd(m.MembersCount()-1, m.MembersCount()).
@@ -319,7 +325,7 @@ func (m *Manager) writeSettlements() {
 		HeaderWriter: func(cells []*table.WCell, mergeCount *int) {
 			*mergeCount = m.settlementsTable.ColumnCount
 			cells[0].Value = "Run 'update' command to generate settlement transactions."
-			cells[0].Style = newInt(m.GetStyle(helpStyle))
+			cells[0].Style = newInt(m.getStyle(helpStyle))
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
 			if rowNumber == 0 {
@@ -332,16 +338,16 @@ func (m *Manager) writeSettlements() {
 			cells[0].Value = m.settlements[rowNumber].ReceiverName
 			cells[1].Value = m.settlements[rowNumber].PayerName
 			cells[2].Value = m.settlements[rowNumber].Amount.ToNumeral()
-			cells[2].Style = newInt(m.GetStyle(moneyStyle))
+			cells[2].Style = newInt(m.getStyle(moneyStyle))
 		},
 		ColumnWidth: 18,
 		RowStyler: func(row int) (int, bool) {
 			if row == 0 {
-				return m.GetStyle(headerBoxStyle), true
+				return m.getStyle(headerBoxStyle), true
 			}
 			return 0, false
 		},
-		ConditionalStyles: style.Alternate(m.GetStyle(alternate0Style), m.GetStyle(alternate1Style), m.GetStyle(alternate2Style)).
+		ConditionalStyles: style.Alternate(m.getStyle(alternate0Style), m.getStyle(alternate1Style), m.getStyle(alternate2Style)).
 			WithStart(1, 0).
 			WithEnd(len(m.settlements), m.settlementsTable.ColumnCount-1).
 			Build(),
@@ -402,11 +408,11 @@ func initializeMembers(m *Manager) {
 		ColumnWidth: 32,
 		RowStyler: func(row int) (int, bool) {
 			if row == -1 {
-				return m.GetStyle(headerBoxStyle), true
+				return m.getStyle(headerBoxStyle), true
 			}
 			return 0, false
 		},
-		ConditionalStyles: style.Alternate(m.GetStyle(alternate0Style), m.GetStyle(alternate1Style)).
+		ConditionalStyles: style.Alternate(m.getStyle(alternate0Style), m.getStyle(alternate1Style)).
 			WithStart(0, 0).
 			WithEnd(m.MembersCount()-1, 1).
 			Build(),
@@ -439,16 +445,16 @@ func initializeTransactions(m *Manager) {
 			cells[1].Value = m.members.RequireMemberByIndex(0).Name
 			cells[2].Value = m.members.RequireMemberByIndex(1).Name
 			cells[3].Value = 223000
-			cells[3].Style = newInt(m.GetStyle(moneyStyle))
+			cells[3].Style = newInt(m.getStyle(moneyStyle))
 		},
 		ColumnWidth: 18,
 		RowStyler: func(row int) (int, bool) {
 			if row == -1 {
-				return m.GetStyle(headerBoxStyle), true
+				return m.getStyle(headerBoxStyle), true
 			}
 			return 0, false
 		},
-		ConditionalStyles: style.Alternate(m.GetStyle(alternate0Style), m.GetStyle(alternate1Style), m.GetStyle(alternate2Style)).
+		ConditionalStyles: style.Alternate(m.getStyle(alternate0Style), m.getStyle(alternate1Style), m.getStyle(alternate2Style)).
 			WithStart(0, 0).
 			WithEnd(0, m.transactionsTable.ColumnCount-1).
 			WithModOffset(2).
@@ -472,17 +478,17 @@ func initializeExpenses(m *Manager) {
 			cells[1].Value = "bandages"
 			cells[2].Value = m.members.RequireMemberByIndex(0).Name
 			cells[3].Value = 623000
-			cells[3].Style = newInt(m.GetStyle(moneyStyle))
+			cells[3].Style = newInt(m.getStyle(moneyStyle))
 			totalAmountCell = m.expensesLeftTable.GetCell(rowNumber, 3)
 		},
 		ColumnWidth: 16,
 		RowStyler: func(row int) (int, bool) {
 			if row == -1 {
-				return m.GetStyle(secondHeaderBoxStyle), true
+				return m.getStyle(secondHeaderBoxStyle), true
 			}
 			return 0, false
 		},
-		ConditionalStyles: style.Alternate(m.GetStyle(alternate0Style), m.GetStyle(alternate1Style), m.GetStyle(alternate2Style)).
+		ConditionalStyles: style.Alternate(m.getStyle(alternate0Style), m.getStyle(alternate1Style), m.getStyle(alternate2Style)).
 			WithStart(0, 0).
 			WithEnd(0, m.expensesLeftTable.ColumnCount+m.expensesRightTable.ColumnCount-1).
 			Build(),
@@ -508,16 +514,16 @@ func initializeExpenses(m *Manager) {
 					cells[i].Value = i >> 2
 					totalWeightsFormula := fmt.Sprintf("SUM(%s)", strings.Join(weightCells, ", "))
 					cells[i+1].Formula = fmt.Sprintf("(%s/%s)*%s", m.expensesRightTable.GetCell(rowNumber, i), totalWeightsFormula, totalAmountCell)
-					cells[i+1].Style = newInt(m.GetStyle(moneyStyle))
+					cells[i+1].Style = newInt(m.getStyle(moneyStyle))
 				}
 			}
 		},
 		RowStyler: func(row int) (int, bool) {
 			if row == -1 {
-				return m.GetStyle(headerBoxStyle), true
+				return m.getStyle(headerBoxStyle), true
 			}
 			if row == 0 {
-				return m.GetStyle(secondHeaderBoxStyle), true
+				return m.getStyle(secondHeaderBoxStyle), true
 			}
 
 			return 0, false

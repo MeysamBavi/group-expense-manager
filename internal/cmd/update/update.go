@@ -50,9 +50,8 @@ func run(_ *cobra.Command, args []string) {
 		log.FatalError(err)
 	}
 
-	logLoadedData(manager)
-
 	manager.UpdateDebtors()
+	manager.PrintData()
 	if !overwrite {
 		ext := path.Ext(fileName)
 		fileName = strings.TrimSuffix(fileName, ext) + "-updated" + ext
@@ -61,8 +60,4 @@ func run(_ *cobra.Command, args []string) {
 	if err != nil {
 		log.FatalError(err)
 	}
-}
-
-func logLoadedData(manager *sheet.Manager) {
-	manager.PrintData()
 }

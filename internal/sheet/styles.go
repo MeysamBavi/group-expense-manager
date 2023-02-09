@@ -38,21 +38,21 @@ const (
 func createStyles(m *Manager) {
 	builder := style.Empty()
 
-	m.SetStyle(moneyStyle, builder.WithMoneyFormat().Build())
-	m.SetStyle(boxStyle, builder.WithFullBoarders(borderColor).Build())
-	m.SetStyle(secondHeaderBoxStyle, builder.WithBackground(secondHeaderBGColor).
+	m.setStyle(moneyStyle, builder.WithMoneyFormat().Build())
+	m.setStyle(boxStyle, builder.WithFullBoarders(borderColor).Build())
+	m.setStyle(secondHeaderBoxStyle, builder.WithBackground(secondHeaderBGColor).
 		WithCenterAlignment().WithFullBoarders(borderColor).WithFont(9, false, defaultFontColor).Build())
-	m.SetStyle(headerStyle, builder.WithBackground(headerBGColor).Build())
-	m.SetStyle(headerBoxStyle, builder.WithBackground(headerBGColor).
+	m.setStyle(headerStyle, builder.WithBackground(headerBGColor).Build())
+	m.setStyle(headerBoxStyle, builder.WithBackground(headerBGColor).
 		WithFullBoarders(borderColor).WithCenterAlignment().Build())
-	m.SetStyle(lastUpdateStyle, builder.WithFont(8, false, defaultFontColor).WithCenterAlignment().Build())
-	m.SetStyle(helpStyle, builder.WithBackground(helpBGColor).
+	m.setStyle(lastUpdateStyle, builder.WithFont(8, false, defaultFontColor).WithCenterAlignment().Build())
+	m.setStyle(helpStyle, builder.WithBackground(helpBGColor).
 		WithFont(9, true, helpFontColor).WithCenterAlignment().WithFullBoarders(borderColor).Build())
-	m.SetStyle(rightBorderStyle, builder.WithRightBorderOnly(borderColor).Build())
-	m.SetStyle(leftBorderStyle, builder.WithLeftBorderOnly(borderColor).Build())
-	m.SetStyle(alternateBlockStyle, builder.WithCrossedBackground(alternateBlockBGColor).WithFullBoarders(alternateBorderColor).Build())
+	m.setStyle(rightBorderStyle, builder.WithRightBorderOnly(borderColor).Build())
+	m.setStyle(leftBorderStyle, builder.WithLeftBorderOnly(borderColor).Build())
+	m.setStyle(alternateBlockStyle, builder.WithCrossedBackground(alternateBlockBGColor).WithFullBoarders(alternateBorderColor).Build())
 
-	m.SetCondStyle(alternate0Style, builder.WithBackground(alternate0BGColor).WithFullBoarders(alternateBorderColor).Build())
-	m.SetCondStyle(alternate1Style, builder.WithBackground(alternate1BGColor).WithFullBoarders(alternateBorderColor).Build())
-	m.SetCondStyle(alternate2Style, builder.WithBackground(alternate2BGColor).WithFullBoarders(alternateBorderColor).Build())
+	m.setCondStyle(alternate0Style, builder.WithBackground(alternate0BGColor).WithFullBoarders(alternateBorderColor).Build())
+	m.setCondStyle(alternate1Style, builder.WithBackground(alternate1BGColor).WithFullBoarders(alternateBorderColor).Build())
+	m.setCondStyle(alternate2Style, builder.WithBackground(alternate2BGColor).WithFullBoarders(alternateBorderColor).Build())
 }
