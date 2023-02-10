@@ -16,7 +16,6 @@ const (
 	alternate1Style
 	alternate2Style
 	alternateBlockStyle
-	invisibleStyle
 )
 
 const (
@@ -42,7 +41,6 @@ func createStyles(m *Manager) {
 	m.setStyle(leftBorderStyle, builder.WithLeftBorderOnly(m.theme.BorderColor).Build())
 	m.setStyle(alternateBlockStyle, builder.WithCrossedBackground(m.theme.AlternateBlockBGColor).
 		WithFullBoarders(m.theme.AlternateBorderColor).Build())
-	m.setStyle(invisibleStyle, builder.WithFont(8, false, defaultCellBGColor).Build())
 
 	m.setCondStyle(alternate0Style, builder.WithBackground(m.theme.Alternate0BGColor).
 		WithFullBoarders(m.theme.AlternateBorderColor).Build())

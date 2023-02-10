@@ -114,3 +114,14 @@ func newBaseStateTable(file *excelize.File, membersCount int) *table.Table {
 		ErrorHandler: fatalIfNotNil,
 	}
 }
+
+func newMetadataTable(file *excelize.File) *table.Table {
+	return &table.Table{
+		File:         file,
+		SheetName:    metadataSheet,
+		RowOffset:    1,
+		ColumnOffset: 1,
+		ColumnCount:  1,
+		ErrorHandler: fatalIfNotNil,
+	}
+}

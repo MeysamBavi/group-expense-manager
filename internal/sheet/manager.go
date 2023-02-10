@@ -22,6 +22,7 @@ const (
 	debtMatrixSheet   = "debt matrix"
 	settlementsSheet  = "settlements"
 	baseStateSheet    = "base state"
+	metadataSheet     = "metadata"
 )
 
 const (
@@ -36,7 +37,6 @@ type Manager struct {
 	debtMatrix         [][]model.Amount
 	baseState          [][]model.Amount
 	settlements        []*model.Transaction
-	sheetIndices       map[string]int
 	styleIndices       map[int]int
 	membersTable       *table.Table
 	expensesLeftTable  *table.Table
@@ -46,6 +46,7 @@ type Manager struct {
 	debtMatrixTable    *table.Table
 	settlementsTable   *table.Table
 	baseStateTable     *table.Table
+	metadataTable      *table.Table
 	theme              *style.Theme
 }
 
@@ -74,9 +75,10 @@ func LoadManager(fileName string) (*Manager, error) {
 	m.file = file
 
 	m.membersTable = newMembersTable(m.file)
-	m.members, m.theme = loadMembersAndTheme(m.membersTable)
+	m.members = loadMembers(m.membersTable)
 	setTablesExceptMembers(m)
 
+	m.theme = loadMetadata(m.metadataTable)
 	m.expenses = loadExpenses(m.expensesFullTable, m.members)
 	m.transactions = loadTransactions(m.transactionsTable, m.members)
 	m.baseState = loadBaseState(m.baseStateTable, m.members)
@@ -88,7 +90,6 @@ func LoadManager(fileName string) (*Manager, error) {
 
 func newBaseManager() *Manager {
 	return &Manager{
-		sheetIndices: make(map[string]int),
 		styleIndices: make(map[int]int),
 	}
 }
@@ -130,6 +131,8 @@ func (m *Manager) PrintData(summarize bool) {
 }
 
 func (m *Manager) SaveAs(name string) error {
+	err := m.file.SetSheetVisible(metadataSheet, false)
+	fatalIfNotNil(err)
 	return m.file.SaveAs(name)
 }
 
@@ -156,10 +159,6 @@ func (m *Manager) setCondStyle(key int, value *excelize.Style) {
 
 func (m *Manager) getStyle(key int) int {
 	return m.styleIndices[key]
-}
-
-func (m *Manager) getSheetIndex(name string) int {
-	return m.sheetIndices[name]
 }
 
 func (m *Manager) calculateDebtMatrix() {
@@ -383,51 +382,46 @@ func setTablesExceptMembers(m *Manager) {
 	m.debtMatrixTable = newDebtMatrixTable(m.file, m.MembersCount())
 	m.settlementsTable = newSettlementsTable(m.file)
 	m.baseStateTable = newBaseStateTable(m.file, m.MembersCount())
+	m.metadataTable = newMetadataTable(m.file)
 }
 
 func createSheets(m *Manager) {
 	fatalIfNotNil(m.file.SetSheetName(initialSheetName, membersSheet))
 	defer initializeMembers(m)
 
-	i, err := m.file.NewSheet(expensesSheet)
+	_, err := m.file.NewSheet(expensesSheet)
 	fatalIfNotNil(err)
-	m.sheetIndices[expensesSheet] = i
 	defer initializeExpenses(m)
 
-	i, err = m.file.NewSheet(transactionsSheet)
+	_, err = m.file.NewSheet(transactionsSheet)
 	fatalIfNotNil(err)
-	m.sheetIndices[transactionsSheet] = i
 	defer initializeTransactions(m)
 
-	i, err = m.file.NewSheet(debtMatrixSheet)
+	_, err = m.file.NewSheet(debtMatrixSheet)
 	fatalIfNotNil(err)
-	m.sheetIndices[debtMatrixSheet] = i
 	defer initializeDebtMatrix(m)
 
-	i, err = m.file.NewSheet(settlementsSheet)
+	_, err = m.file.NewSheet(settlementsSheet)
 	fatalIfNotNil(err)
-	m.sheetIndices[settlementsSheet] = i
 	defer initializeSettlements(m)
 
-	i, err = m.file.NewSheet(baseStateSheet)
+	_, err = m.file.NewSheet(baseStateSheet)
 	fatalIfNotNil(err)
-	m.sheetIndices[baseStateSheet] = i
 	defer initializeBaseState(m)
+
+	_, err = m.file.NewSheet(metadataSheet)
+	fatalIfNotNil(err)
+	defer initializeMetadata(m)
 }
 
 func initializeMembers(m *Manager) {
 	m.membersTable.WriteRows(table.WriteRowsParams{
-		RowCount: m.MembersCount() + 1,
+		RowCount: m.MembersCount(),
 		HeaderWriter: func(cells []*table.WCell, _ *int) {
 			cells[0].Value = "Name"
 			cells[1].Value = "Card Number"
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
-			if rowNumber == m.MembersCount() {
-				cells[0].Value = m.theme.Code()
-				cells[0].Style = newInt(m.getStyle(invisibleStyle))
-				return
-			}
 			cells[0].Value = m.members.RequireMemberByIndex(rowNumber).Name
 			cells[1].Value = m.members.RequireMemberByIndex(rowNumber).CardNumber
 		},
@@ -563,15 +557,19 @@ func initializeSettlements(m *Manager) {
 	m.writeSettlements()
 }
 
-func loadMembersAndTheme(t *table.Table) (*store.MemberStore, *style.Theme) {
+func initializeMetadata(m *Manager) {
+	m.metadataTable.WriteRows(table.WriteRowsParams{
+		RowCount: 1,
+		RowWriter: func(rowNumber int, cells []*table.WCell) {
+			cells[0].Value = m.theme.Code()
+		},
+	})
+}
+
+func loadMembers(t *table.Table) *store.MemberStore {
 	members := store.NewMemberStore()
-	var theme *style.Theme
 	t.ReadRows(table.ReadRowsParams{
 		RowReader: func(rowNumber int, cells []*table.RCell) {
-			if cells[0].Value[0] == '#' && cells[1].Value == "" {
-				theme = style.ThemeFromCode(cells[0].Value)
-				return
-			}
 			err := members.AddMember(&model.Member{
 				Name:       strings.TrimSpace(cells[0].Value),
 				CardNumber: strings.TrimSpace(cells[1].Value),
@@ -582,7 +580,7 @@ func loadMembersAndTheme(t *table.Table) (*store.MemberStore, *style.Theme) {
 		UnknownRowCount: true,
 	})
 
-	return members, theme
+	return members
 }
 
 func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
@@ -696,6 +694,21 @@ func loadBaseState(t *table.Table, members *store.MemberStore) [][]model.Amount 
 	})
 
 	return baseState
+}
+
+func loadMetadata(t *table.Table) *style.Theme {
+	var theme *style.Theme
+	t.ReadRows(table.ReadRowsParams{
+		RowCount: 1,
+		RowReader: func(rowNumber int, cells []*table.RCell) {
+			if rowNumber == 0 {
+				theme = style.ThemeFromCode(cells[0].Value)
+			}
+		},
+		IncludeHeader: false,
+	})
+
+	return theme
 }
 
 func requireMemberValidity(members *store.MemberStore, memberName string, index int) {
