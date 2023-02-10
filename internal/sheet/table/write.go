@@ -12,6 +12,7 @@ type WriteRowsParams struct {
 	ColumnStyler      StylerFunc
 	RowStyler         StylerFunc
 	ConditionalStyles []*ConditionalStyle
+	ClearBeforeWrite  bool
 }
 
 type WCell struct {

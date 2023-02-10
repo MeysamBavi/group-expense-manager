@@ -27,6 +27,17 @@ func (t *Table) WriteRows(params WriteRowsParams) {
 		cells[i] = &WCell{}
 	}
 
+	if params.ClearBeforeWrite {
+		blankSheetIndex, err := t.File.NewSheet("blank")
+		t.callErrorHandler(err)
+		sheetIndex, err := t.File.GetSheetIndex(t.SheetName)
+		t.callErrorHandler(err)
+		err = t.File.CopySheet(blankSheetIndex, sheetIndex)
+		t.callErrorHandler(err)
+		err = t.File.DeleteSheet("blank")
+		t.callErrorHandler(err)
+	}
+
 	if params.ColumnWidth > 0 {
 		err := t.File.SetColWidth(t.SheetName,
 			t.getColumn(0),

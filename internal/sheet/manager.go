@@ -304,6 +304,9 @@ func (m *Manager) calculateSettlements() {
 
 	settlements := make([]*model.Transaction, 0)
 	addSettlement := func(receiver, payer int, amount model.Amount) {
+		if amount == model.AmountZero {
+			return
+		}
 		if amount.LessThan(model.AmountZero) {
 			receiver, payer = payer, receiver
 			amount = amount.Negative()
@@ -368,6 +371,7 @@ func (m *Manager) writeSettlements() {
 			WithStart(1, 0).
 			WithEnd(len(m.settlements), m.settlementsTable.ColumnCount-1).
 			Build(),
+		ClearBeforeWrite: true,
 	})
 }
 
