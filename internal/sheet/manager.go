@@ -279,21 +279,21 @@ func (m *Manager) writeBaseState() {
 func (m *Manager) calculateSettlements() {
 	type balance struct {
 		name   string
-		amount model.Amount
+		amount model.Amount // positive means debtor
 	}
 
 	balances := make([]balance, 0, m.MembersCount())
-	m.members.Range(func(index int, member *model.Member) {
+	m.members.Range(func(memberIndex int, member *model.Member) {
 		gives, receives := model.AmountZero, model.AmountZero
 		for i := 0; i < m.MembersCount(); i++ {
-			receives = receives.Add(m.debtMatrix[i][index])
+			receives = receives.Add(m.debtMatrix[i][memberIndex])
 		}
 		for i := 0; i < m.MembersCount(); i++ {
-			gives = gives.Add(m.debtMatrix[index][i])
+			gives = gives.Add(m.debtMatrix[memberIndex][i])
 		}
 		balances = append(balances, balance{
 			name:   member.Name,
-			amount: receives.Sub(gives),
+			amount: gives.Sub(receives),
 		})
 	})
 
@@ -315,20 +315,25 @@ func (m *Manager) calculateSettlements() {
 			PayerName:    balances[payer].name,
 			Amount:       amount,
 		})
+		balances[payer].amount = balances[payer].amount.Sub(amount)
+		balances[receiver].amount = balances[receiver].amount.Add(amount)
 	}
 	lowest, highest := 0, len(balances)-1
 	for highest > lowest {
-		diff := balances[highest].amount.Add(balances[lowest].amount)
-		if diff.LessThan(model.AmountZero) {
-			addSettlement(highest, lowest, balances[highest].amount)
-			highest--
-		} else if diff == model.AmountZero {
-			addSettlement(highest, lowest, balances[highest].amount)
-			highest--
+		if balances[lowest].amount == model.AmountZero {
 			lowest++
+			continue
+		}
+		if balances[highest].amount == model.AmountZero {
+			highest--
+			continue
+		}
+
+		deficit := balances[highest].amount.Add(balances[lowest].amount)
+		if deficit.LessThan(model.AmountZero) || deficit == model.AmountZero {
+			addSettlement(lowest, highest, balances[highest].amount)
 		} else {
-			addSettlement(highest, lowest, balances[lowest].amount)
-			lowest++
+			addSettlement(lowest, highest, balances[lowest].amount)
 		}
 	}
 
