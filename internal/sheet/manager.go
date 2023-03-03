@@ -333,7 +333,7 @@ func (m *Manager) calculateSettlements() {
 		if deficit.LessThan(model.AmountZero) || deficit == model.AmountZero {
 			addSettlement(lowest, highest, balances[highest].amount)
 		} else {
-			addSettlement(lowest, highest, balances[lowest].amount)
+			addSettlement(lowest, highest, balances[lowest].amount.Negative())
 		}
 	}
 
