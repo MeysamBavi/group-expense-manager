@@ -185,10 +185,10 @@ func (m *Manager) calculateDebtMatrix() {
 		for c := r; c < m.MembersCount(); c++ {
 			if debtMatrix[r][c].LessThan(debtMatrix[c][r]) {
 				debtMatrix[c][r] = debtMatrix[c][r].Sub(debtMatrix[r][c])
-				debtMatrix[r][c] = model.AmountZero
+				debtMatrix[r][c] = model.AmountZero()
 			} else {
 				debtMatrix[r][c] = debtMatrix[r][c].Sub(debtMatrix[c][r])
-				debtMatrix[c][r] = model.AmountZero
+				debtMatrix[c][r] = model.AmountZero()
 			}
 		}
 	}
@@ -219,9 +219,9 @@ func (m *Manager) writeDebtMatrix() {
 			cells[0].Value = m.members.RequireMemberByIndex(memberIndex).Name
 			cells[0].Style = newInt(m.getStyle(headerBoxStyle))
 			for i := 0; i < m.MembersCount(); i++ {
-				amount := m.debtMatrix[memberIndex][i].ToNumeral()
-				cells[i+1].Value = amount
-				if amount == 0 {
+				amount := m.debtMatrix[memberIndex][i]
+				cells[i+1].Value = amount.ToNumeral()
+				if amount.IsZero() {
 					cells[i+1].Value = ""
 				}
 				if memberIndex == i {
@@ -255,9 +255,9 @@ func (m *Manager) writeBaseState() {
 			cells[0].Value = m.members.RequireMemberByIndex(rowNumber).Name
 			cells[0].Style = newInt(m.getStyle(headerBoxStyle))
 			for i := 0; i < m.MembersCount(); i++ {
-				amount := m.baseState[rowNumber][i].ToNumeral()
-				cells[i+1].Value = amount
-				if amount == 0 {
+				amount := m.baseState[rowNumber][i]
+				cells[i+1].Value = amount.ToNumeral()
+				if amount.IsZero() {
 					cells[i+1].Value = ""
 				}
 				if rowNumber == i {
@@ -284,7 +284,7 @@ func (m *Manager) calculateSettlements() {
 
 	balances := make([]balance, 0, m.MembersCount())
 	m.members.Range(func(memberIndex int, member *model.Member) {
-		gives, receives := model.AmountZero, model.AmountZero
+		gives, receives := model.AmountZero(), model.AmountZero()
 		for i := 0; i < m.MembersCount(); i++ {
 			receives = receives.Add(m.debtMatrix[i][memberIndex])
 		}
@@ -303,10 +303,10 @@ func (m *Manager) calculateSettlements() {
 
 	settlements := make([]*model.Transaction, 0)
 	addSettlement := func(receiver, payer int, amount model.Amount) {
-		if amount == model.AmountZero {
+		if amount.IsZero() {
 			return
 		}
-		if amount.LessThan(model.AmountZero) {
+		if amount.LessThan(model.AmountZero()) {
 			receiver, payer = payer, receiver
 			amount = amount.Negative()
 		}
@@ -320,20 +320,20 @@ func (m *Manager) calculateSettlements() {
 	}
 	lowest, highest := 0, len(balances)-1
 	for highest > lowest {
-		if balances[lowest].amount == model.AmountZero {
+		if balances[lowest].amount.IsZero() {
 			lowest++
 			continue
 		}
-		if balances[highest].amount == model.AmountZero {
+		if balances[highest].amount.IsZero() {
 			highest--
 			continue
 		}
 
 		deficit := balances[highest].amount.Add(balances[lowest].amount)
-		if deficit.LessThan(model.AmountZero) || deficit == model.AmountZero {
-			addSettlement(lowest, highest, balances[highest].amount)
-		} else {
+		if deficit.IsPositive() {
 			addSettlement(lowest, highest, balances[lowest].amount.Negative())
+		} else {
+			addSettlement(lowest, highest, balances[highest].amount)
 		}
 	}
 
