@@ -53,8 +53,9 @@ func ParseTime(value string) (Time, error) {
 		return &gregorian{}, nil
 	}
 	for _, layout := range layouts {
-		if result, err := time.Parse(layout, value); err == nil {
-			return &gregorian{result.Local()}, nil
+		if result, err := time.ParseInLocation(layout, value, time.Local); err == nil {
+			return &gregorian{result}, nil
+
 		}
 	}
 
