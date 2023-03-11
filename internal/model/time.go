@@ -55,6 +55,7 @@ func ParseTime(value string) (Time, error) {
 	for _, layout := range layouts {
 		if result, err := time.ParseInLocation(layout, value, time.Local); err == nil {
 			return &gregorian{result}, nil
+
 		}
 	}
 
