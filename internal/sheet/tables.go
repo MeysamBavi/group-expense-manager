@@ -34,7 +34,6 @@ func newMembersTable(file *excelize.File) *table.Table {
 		RowOffset:    membersRowOffset,
 		ColumnOffset: membersColOffset,
 		ColumnCount:  2,
-		ErrorHandler: fatalIfNotNil,
 	}
 }
 
@@ -45,7 +44,6 @@ func newExpensesLeftTable(file *excelize.File) *table.Table {
 		RowOffset:    expensesLeftSideRowOffset,
 		ColumnOffset: expensesLeftSideColOffset,
 		ColumnCount:  4,
-		ErrorHandler: fatalIfNotNil,
 	}
 }
 
@@ -56,7 +54,6 @@ func newExpensesRightTable(file *excelize.File, membersCount int) *table.Table {
 		RowOffset:    expensesRightSideRowOffset,
 		ColumnOffset: expensesRightSideColOffset,
 		ColumnCount:  membersCount * 2,
-		ErrorHandler: fatalIfNotNil,
 	}
 }
 
@@ -67,7 +64,6 @@ func newExpensesFullTable(file *excelize.File, membersCount int) *table.Table {
 		RowOffset:    expensesRightSideRowOffset,
 		ColumnOffset: expensesLeftSideColOffset,
 		ColumnCount:  4 + membersCount*2,
-		ErrorHandler: fatalIfNotNil,
 	}
 }
 
@@ -78,7 +74,6 @@ func newTransactionsTable(file *excelize.File) *table.Table {
 		RowOffset:    transactionsRowOffset,
 		ColumnOffset: transactionsColOffset,
 		ColumnCount:  4,
-		ErrorHandler: fatalIfNotNil,
 	}
 }
 
@@ -89,7 +84,6 @@ func newDebtMatrixTable(file *excelize.File, membersCount int) *table.Table {
 		RowOffset:    debtMatrixRowOffset,
 		ColumnOffset: debtMatrixColOffset,
 		ColumnCount:  membersCount + 1,
-		ErrorHandler: fatalIfNotNil,
 	}
 }
 
@@ -100,7 +94,6 @@ func newSettlementsTable(file *excelize.File) *table.Table {
 		RowOffset:    settlementsRowOffset,
 		ColumnOffset: settlementsColOffset,
 		ColumnCount:  3,
-		ErrorHandler: fatalIfNotNil,
 	}
 }
 
@@ -111,7 +104,6 @@ func newBaseStateTable(file *excelize.File, membersCount int) *table.Table {
 		RowOffset:    baseStateRowOffset,
 		ColumnOffset: baseStateColOffset,
 		ColumnCount:  membersCount + 1,
-		ErrorHandler: fatalIfNotNil,
 	}
 }
 
@@ -122,6 +114,5 @@ func newMetadataTable(file *excelize.File) *table.Table {
 		RowOffset:    1,
 		ColumnOffset: 1,
 		ColumnCount:  1,
-		ErrorHandler: fatalIfNotNil,
 	}
 }
