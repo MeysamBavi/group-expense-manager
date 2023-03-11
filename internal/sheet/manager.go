@@ -181,10 +181,10 @@ func (m *Manager) calculateDebtMatrix() {
 		for c := r; c < m.MembersCount(); c++ {
 			if debtMatrix[r][c].LessThan(debtMatrix[c][r]) {
 				debtMatrix[c][r] = debtMatrix[c][r].Sub(debtMatrix[r][c])
-				debtMatrix[r][c] = model.AmountZero
+				debtMatrix[r][c] = model.AmountZero()
 			} else {
 				debtMatrix[r][c] = debtMatrix[r][c].Sub(debtMatrix[c][r])
-				debtMatrix[c][r] = model.AmountZero
+				debtMatrix[c][r] = model.AmountZero()
 			}
 		}
 	}
@@ -215,9 +215,9 @@ func (m *Manager) writeDebtMatrix() {
 			cells[0].Value = m.members.RequireMemberByIndex(memberIndex).Name
 			cells[0].Style = newInt(m.getStyle(headerBoxStyle))
 			for i := 0; i < m.MembersCount(); i++ {
-				amount := m.debtMatrix[memberIndex][i].ToNumeral()
-				cells[i+1].Value = amount
-				if amount == 0 {
+				amount := m.debtMatrix[memberIndex][i]
+				cells[i+1].Value = amount.ToNumeral()
+				if amount.IsZero() {
 					cells[i+1].Value = ""
 				}
 				if memberIndex == i {
@@ -251,9 +251,9 @@ func (m *Manager) writeBaseState() {
 			cells[0].Value = m.members.RequireMemberByIndex(rowNumber).Name
 			cells[0].Style = newInt(m.getStyle(headerBoxStyle))
 			for i := 0; i < m.MembersCount(); i++ {
-				amount := m.baseState[rowNumber][i].ToNumeral()
-				cells[i+1].Value = amount
-				if amount == 0 {
+				amount := m.baseState[rowNumber][i]
+				cells[i+1].Value = amount.ToNumeral()
+				if amount.IsZero() {
 					cells[i+1].Value = ""
 				}
 				if rowNumber == i {
@@ -275,21 +275,21 @@ func (m *Manager) writeBaseState() {
 func (m *Manager) calculateSettlements() {
 	type balance struct {
 		name   string
-		amount model.Amount
+		amount model.Amount // positive means debtor
 	}
 
 	balances := make([]balance, 0, m.MembersCount())
-	m.members.Range(func(index int, member *model.Member) {
-		gives, receives := model.AmountZero, model.AmountZero
+	m.members.Range(func(memberIndex int, member *model.Member) {
+		gives, receives := model.AmountZero(), model.AmountZero()
 		for i := 0; i < m.MembersCount(); i++ {
-			receives = receives.Add(m.debtMatrix[i][index])
+			receives = receives.Add(m.debtMatrix[i][memberIndex])
 		}
 		for i := 0; i < m.MembersCount(); i++ {
-			gives = gives.Add(m.debtMatrix[index][i])
+			gives = gives.Add(m.debtMatrix[memberIndex][i])
 		}
 		balances = append(balances, balance{
 			name:   member.Name,
-			amount: receives.Sub(gives),
+			amount: gives.Sub(receives),
 		})
 	})
 
@@ -299,10 +299,10 @@ func (m *Manager) calculateSettlements() {
 
 	settlements := make([]*model.Transaction, 0)
 	addSettlement := func(receiver, payer int, amount model.Amount) {
-		if amount == model.AmountZero {
+		if amount.IsZero() {
 			return
 		}
-		if amount.LessThan(model.AmountZero) {
+		if amount.LessThan(model.AmountZero()) {
 			receiver, payer = payer, receiver
 			amount = amount.Negative()
 		}
@@ -311,20 +311,25 @@ func (m *Manager) calculateSettlements() {
 			PayerName:    balances[payer].name,
 			Amount:       amount,
 		})
+		balances[payer].amount = balances[payer].amount.Sub(amount)
+		balances[receiver].amount = balances[receiver].amount.Add(amount)
 	}
 	lowest, highest := 0, len(balances)-1
 	for highest > lowest {
-		diff := balances[highest].amount.Add(balances[lowest].amount)
-		if diff.LessThan(model.AmountZero) {
-			addSettlement(highest, lowest, balances[highest].amount)
-			highest--
-		} else if diff == model.AmountZero {
-			addSettlement(highest, lowest, balances[highest].amount)
-			highest--
+		if balances[lowest].amount.IsZero() {
 			lowest++
+			continue
+		}
+		if balances[highest].amount.IsZero() {
+			highest--
+			continue
+		}
+
+		deficit := balances[highest].amount.Add(balances[lowest].amount)
+		if deficit.IsPositive() {
+			addSettlement(lowest, highest, balances[lowest].amount.Negative())
 		} else {
-			addSettlement(highest, lowest, balances[lowest].amount)
-			lowest++
+			addSettlement(lowest, highest, balances[highest].amount)
 		}
 	}
 
@@ -585,7 +590,7 @@ func loadMembers(t *table.Table) *store.MemberStore {
 				Name:       strings.TrimSpace(cells[0].Value),
 				CardNumber: strings.TrimSpace(cells[1].Value),
 			})
-			fatalIfNotNil(err)
+			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 0)))
 		},
 		IncludeHeader:   false,
 		UnknownRowCount: true,
@@ -610,7 +615,7 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 			}
 
 			theTime, err := model.ParseTime(cells[0].Value)
-			fatalIfNotNil(err)
+			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 0)))
 
 			title := cells[1].Value
 
@@ -618,7 +623,7 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 			requireMemberPresence(members, payer)
 
 			amount, err := model.ParseAmount(cells[3].Value)
-			fatalIfNotNil(err)
+			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 3)))
 
 			ex := &model.Expense{
 				Title:     title,
@@ -630,7 +635,7 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 			var shares []model.Share
 			for i := 4; i < t.ColumnCount; i += 2 {
 				weight, err := strconv.Atoi(cells[i].Value)
-				fatalIfNotNil(err)
+				fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, i)))
 
 				memberName := members.RequireMemberByIndex((i - 4) / 2).Name
 				shares = append(shares, model.Share{
@@ -655,7 +660,7 @@ func loadTransactions(t *table.Table, members *store.MemberStore) []*model.Trans
 	t.ReadRows(table.ReadRowsParams{
 		RowReader: func(rowNumber int, cells []*table.RCell) {
 			theTime, err := model.ParseTime(cells[0].Value)
-			fatalIfNotNil(err)
+			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 0)))
 
 			receiver := cells[1].Value
 			requireMemberPresence(members, receiver)
@@ -664,7 +669,7 @@ func loadTransactions(t *table.Table, members *store.MemberStore) []*model.Trans
 			requireMemberPresence(members, payer)
 
 			amount, err := model.ParseAmount(cells[3].Value)
-			fatalIfNotNil(err)
+			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 3)))
 
 			transactions = append(transactions, &model.Transaction{
 				Time:         theTime,
@@ -696,7 +701,7 @@ func loadBaseState(t *table.Table, members *store.MemberStore) [][]model.Amount 
 
 			for i := 0; i < members.Count(); i++ {
 				amount, err := model.ParseAmount(cells[i+1].Value)
-				fatalIfNotNil(err)
+				fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, i+1)))
 				baseState[rowNumber][i] = amount
 			}
 		},

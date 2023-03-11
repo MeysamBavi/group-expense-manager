@@ -3,6 +3,7 @@ package table
 import (
 	"errors"
 	"fmt"
+	"github.com/MeysamBavi/group-expense-manager/internal/log"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -12,12 +13,11 @@ type Table struct {
 	SheetName               string
 	RowOffset, ColumnOffset int
 	ColumnCount             int
-	ErrorHandler            func(error)
 }
 
-func (t *Table) callErrorHandler(err error) {
-	if err != nil && t.ErrorHandler != nil {
-		t.ErrorHandler(err)
+func (t *Table) fatalIfNotNil(err error) {
+	if err != nil {
+		log.FatalErrorByCaller(fmt.Errorf("%w: in %q", err, t.SheetName))
 	}
 }
 
@@ -29,13 +29,13 @@ func (t *Table) WriteRows(params WriteRowsParams) {
 
 	if params.ClearBeforeWrite {
 		blankSheetIndex, err := t.File.NewSheet("blank")
-		t.callErrorHandler(err)
+		t.fatalIfNotNil(err)
 		sheetIndex, err := t.File.GetSheetIndex(t.SheetName)
-		t.callErrorHandler(err)
+		t.fatalIfNotNil(err)
 		err = t.File.CopySheet(blankSheetIndex, sheetIndex)
-		t.callErrorHandler(err)
+		t.fatalIfNotNil(err)
 		err = t.File.DeleteSheet("blank")
-		t.callErrorHandler(err)
+		t.fatalIfNotNil(err)
 	}
 
 	if params.ColumnWidth > 0 {
@@ -44,14 +44,14 @@ func (t *Table) WriteRows(params WriteRowsParams) {
 			t.getColumn(t.ColumnCount-1),
 			params.ColumnWidth,
 		)
-		t.callErrorHandler(err)
+		t.fatalIfNotNil(err)
 	}
 
 	if params.ColumnStyler != nil {
 		for c := 0; c < t.ColumnCount; c++ {
 			if style, ok := params.ColumnStyler(c); ok {
 				err := t.File.SetColStyle(t.SheetName, t.getColumn(c), style)
-				t.callErrorHandler(err)
+				t.fatalIfNotNil(err)
 			}
 		}
 	}
@@ -60,7 +60,7 @@ func (t *Table) WriteRows(params WriteRowsParams) {
 		for r := -1; r < params.RowCount; r++ {
 			if style, ok := params.RowStyler(r); ok {
 				err := t.File.SetCellStyle(t.SheetName, t.GetCell(r, 0), t.GetCell(r, t.ColumnCount-1), style)
-				t.callErrorHandler(err)
+				t.fatalIfNotNil(err)
 			}
 		}
 	}
@@ -82,7 +82,7 @@ func (t *Table) WriteRows(params WriteRowsParams) {
 		rangeRef := fmt.Sprintf("%s:%s",
 			t.GetCell(condStyle.StartRow, condStyle.StartCol), t.GetCell(condStyle.EndRow, condStyle.EndCol))
 		err := t.File.SetConditionalFormat(t.SheetName, rangeRef, condStyle.Options)
-		t.callErrorHandler(err)
+		t.fatalIfNotNil(err)
 	}
 }
 
@@ -95,18 +95,18 @@ func (t *Table) writeRowCells(row int, cells []*WCell, multiplier int) {
 		}
 
 		err = t.File.MergeCell(t.SheetName, cell, t.GetCell(row, i+multiplier-1))
-		t.callErrorHandler(err)
+		t.fatalIfNotNil(err)
 
 		err = t.File.SetCellValue(t.SheetName, cell, cells[i].Value)
-		t.callErrorHandler(err)
+		t.fatalIfNotNil(err)
 
 		err = t.File.SetCellFormula(t.SheetName, cell, cells[i].Formula)
-		t.callErrorHandler(err)
+		t.fatalIfNotNil(err)
 
 		if cells[i].Style != nil {
 			style := *cells[i].Style
 			err = t.File.SetCellStyle(t.SheetName, cell, cell, style)
-			t.callErrorHandler(err)
+			t.fatalIfNotNil(err)
 		}
 	}
 }
@@ -173,7 +173,7 @@ func (t *Table) readRowCells(row int, cells []*RCell) {
 		cell := t.GetCell(row, i)
 
 		formula, err := t.File.GetCellFormula(t.SheetName, cell)
-		t.callErrorHandler(err)
+		t.fatalIfNotNil(err)
 		cells[i].Formula = formula
 
 		var value string
@@ -182,7 +182,7 @@ func (t *Table) readRowCells(row int, cells []*RCell) {
 		} else {
 			value, err = t.File.GetCellValue(t.SheetName, cell)
 		}
-		t.callErrorHandler(err)
+		t.fatalIfNotNil(err)
 		cells[i].Value = value
 	}
 }
