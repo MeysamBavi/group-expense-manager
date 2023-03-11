@@ -96,7 +96,11 @@ func (a Amount) ToNumeral() int64 {
 }
 
 func (a Amount) String() string {
-	return a.r.String()
+	if a.IsZero() {
+		return "0"
+	}
+
+	return a.r.FloatString(0)
 }
 
 func ParseAmount(a string) (Amount, error) {
