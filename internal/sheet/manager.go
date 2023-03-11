@@ -25,10 +25,6 @@ const (
 	metadataSheet     = "metadata"
 )
 
-const (
-	timeLayout = "2006/01/02 15:04"
-)
-
 type Manager struct {
 	file               *excelize.File
 	members            *store.MemberStore
@@ -205,7 +201,7 @@ func (m *Manager) writeDebtMatrix() {
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
 			if rowNumber == 0 {
-				cells[0].Value = fmt.Sprintf("last update: %s", time.Now().Format(timeLayout))
+				cells[0].Value = fmt.Sprintf("last update: %s", model.TimeOfGregorian(time.Now()))
 				cells[0].Style = newInt(m.getStyle(lastUpdateStyle))
 				m.members.Range(func(i int, member *model.Member) {
 					cells[i+1].Value = member.Name
@@ -465,8 +461,15 @@ func initializeTransactions(m *Manager) {
 			cells[3].Value = "Amount"
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
-			cells[0].Value = time.Date(2012, time.June, 26, 5, 6, 0, 0, time.Local).
-				Format(timeLayout)
+			cells[0].Value = model.TimeOfGregorian(time.Date(
+				2012,
+				time.June,
+				26,
+				5,
+				6,
+				0,
+				0,
+				time.Local)).String()
 			cells[1].Value = m.members.RequireMemberByIndex(0).Name
 			cells[2].Value = m.members.RequireMemberByIndex(1).Name
 			cells[3].Value = 223000
@@ -499,7 +502,15 @@ func initializeExpenses(m *Manager) {
 			cells[3].Value = "Total Amount"
 		},
 		RowWriter: func(rowNumber int, cells []*table.WCell) {
-			cells[0].Value = time.Date(2007, time.May, 13, 23, 57, 0, 0, time.Local).Format(timeLayout)
+			cells[0].Value = model.TimeOfGregorian(time.Date(
+				2007,
+				time.May,
+				13,
+				23,
+				57,
+				0,
+				0,
+				time.Local)).String()
 			cells[1].Value = "bandages"
 			cells[2].Value = m.members.RequireMemberByIndex(0).Name
 			cells[3].Value = 623000
@@ -603,7 +614,7 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 				return
 			}
 
-			theTime, err := time.ParseInLocation(timeLayout, cells[0].Value, time.Local)
+			theTime, err := model.ParseTime(cells[0].Value)
 			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 0)))
 
 			title := cells[1].Value
@@ -648,7 +659,7 @@ func loadTransactions(t *table.Table, members *store.MemberStore) []*model.Trans
 	var transactions []*model.Transaction
 	t.ReadRows(table.ReadRowsParams{
 		RowReader: func(rowNumber int, cells []*table.RCell) {
-			theTime, err := time.ParseInLocation(timeLayout, cells[0].Value, time.Local)
+			theTime, err := model.ParseTime(cells[0].Value)
 			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 0)))
 
 			receiver := cells[1].Value
