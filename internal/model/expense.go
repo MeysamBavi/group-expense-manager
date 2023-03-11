@@ -1,7 +1,5 @@
 package model
 
-import "time"
-
 type Share struct {
 	MemberName  string
 	ShareWeight int
@@ -9,7 +7,7 @@ type Share struct {
 
 type Expense struct {
 	Title     string
-	Time      time.Time
+	Time      Time
 	PayerName string
 	Amount    Amount
 	Shares    []Share
