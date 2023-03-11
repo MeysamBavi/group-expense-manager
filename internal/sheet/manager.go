@@ -579,7 +579,7 @@ func loadMembers(t *table.Table) *store.MemberStore {
 				Name:       strings.TrimSpace(cells[0].Value),
 				CardNumber: strings.TrimSpace(cells[1].Value),
 			})
-			fatalIfNotNil(err)
+			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 0)))
 		},
 		IncludeHeader:   false,
 		UnknownRowCount: true,
@@ -604,7 +604,7 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 			}
 
 			theTime, err := time.ParseInLocation(timeLayout, cells[0].Value, time.Local)
-			fatalIfNotNil(err)
+			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 0)))
 
 			title := cells[1].Value
 
@@ -612,7 +612,7 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 			requireMemberPresence(members, payer)
 
 			amount, err := model.ParseAmount(cells[3].Value)
-			fatalIfNotNil(err)
+			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 3)))
 
 			ex := &model.Expense{
 				Title:     title,
@@ -624,7 +624,7 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 			var shares []model.Share
 			for i := 4; i < t.ColumnCount; i += 2 {
 				weight, err := strconv.Atoi(cells[i].Value)
-				fatalIfNotNil(err)
+				fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, i)))
 
 				memberName := members.RequireMemberByIndex((i - 4) / 2).Name
 				shares = append(shares, model.Share{
@@ -649,7 +649,7 @@ func loadTransactions(t *table.Table, members *store.MemberStore) []*model.Trans
 	t.ReadRows(table.ReadRowsParams{
 		RowReader: func(rowNumber int, cells []*table.RCell) {
 			theTime, err := time.ParseInLocation(timeLayout, cells[0].Value, time.Local)
-			fatalIfNotNil(err)
+			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 0)))
 
 			receiver := cells[1].Value
 			requireMemberPresence(members, receiver)
@@ -658,7 +658,7 @@ func loadTransactions(t *table.Table, members *store.MemberStore) []*model.Trans
 			requireMemberPresence(members, payer)
 
 			amount, err := model.ParseAmount(cells[3].Value)
-			fatalIfNotNil(err)
+			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 3)))
 
 			transactions = append(transactions, &model.Transaction{
 				Time:         theTime,
@@ -690,7 +690,7 @@ func loadBaseState(t *table.Table, members *store.MemberStore) [][]model.Amount 
 
 			for i := 0; i < members.Count(); i++ {
 				amount, err := model.ParseAmount(cells[i+1].Value)
-				fatalIfNotNil(err)
+				fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, i+1)))
 				baseState[rowNumber][i] = amount
 			}
 		},
