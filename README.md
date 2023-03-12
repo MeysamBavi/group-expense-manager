@@ -16,13 +16,13 @@ In the very first moment, you give the names and card numbers of the group membe
 
 ### Expenses
 **Expenses** sheet contains the list of all expenses. You add a new row every time somebody pays for something.  
-Each expense has a payer; The person who paid for the expense. Each member has a *share weight* associated with that expense, showing how much of it is their share.  
-*share weight* should be a non-negative integer or a boolean value (true is equivalent to 1, false to 0). A zero *share weight* means that member is not included in the expenses.  
+Each expense has a payer; The person who paid for the expense and lent money to the group. Each member has a *share weight* associated with that expense, showing how much of it is their share.  
+*share weight* should be a non-negative integer or a boolean value (true is equivalent to 1, false to 0). A zero *share weight* means that member is not included in the expense.  
 *Share Amount* is calculated via an Excel formula based on total amount, sum of *share weight*s and the member's *share weight*.
 
 ### Transactions
 **Transactions** sheet contains the list of all transactions. To state that you have paid some of your debts to the group, add a new row.  
-Each transaction has a *receiver*. The amount of transaction will be reduced from your overall debt and the debt state between you and receiver will be updated.
+Each transaction has a *receiver*. The amount of transaction will be reduced from your overall debt and the debt state between you and *receiver* will be updated.
 
 ### Debt Matrix
 **Debt Matrix** sheet contains the debt state between each two members. This matrix is calculated based on *expenses* *transactions* and *base state* **only** when you run the *update* command.  
@@ -32,7 +32,7 @@ For each cell, the person in the row should pay the person in the column. Only t
 **Settlements** sheet the minimum transactions needed for settling up. This list is calculated based on *debt matrix* and **only** when you run the *update* command.
 
 ### Base State
-**Base State** sheet contains the debt state between each two members, before starting to use *GEM*. You can easily migrate to *GEM* by filling this matrix if you have been using a different system.
+**Base State** sheet contains the debt state between each two members, **before** creating the spreadsheet and using *GEM*. You can easily migrate to *GEM* by filling this matrix if you have been using a different system. The format of this matrix is similar to *debt matrix*.
 
 
 ## How do I use it?
