@@ -30,10 +30,33 @@ gem update my-sheet-name.xlsx --overwrite
 This command will update the *debt matrix* and *settlement transactions*.
 
 ### What is editable?
-+ The structure of tables, including all headers are fixed. The *debt matrix* and *settlements* will be overwritten without being read so your changes are ignored.  
-+ You can add or remove any expense or transactions from theirs sheets. But **be careful**: Removing an expense or transaction means **it never happened**.  
-+ You can also edit the card number for each member but **don't edit their name**; Because the previous expenses and transactions use their previous name and cause error when loaded by the program.  
-+ You can edit the *base state* matrix anytime but **remember**: *Base state* is the state of debts **before** running the create command and naturally **does not need editing**.
++ Generally the structure of tables, including all headers are fixed and not editable.
++ You can hide or unhide any sheets without problem.
+
+#### Members
++ Values of *Card Number* column are editable.
++ The names are **not** editable; Because the old names will remain and be used all over the file.
+
+#### Expenses
++ Values of every column are editable except *Share Amount*.
++ *Share Amount* is calculated via an Excel formula, so don't edit it.
++ Members' names in the header are not editable.
++ **Be careful**; Removing an expense means **it never happened**.
+
+#### Transactions
++ Values of every column are editable.
++ **Be careful**; Removing a transaction means **it never happened**.
+
+#### Debt Matrix
++ *Debt Matrix* is **fully regenerated** with each *update* command and existing values are **ignored**.
+
+#### Settlements
++ *Settlements* are **fully regenerated** with each *update* command and existing values are **ignored**.
+
+#### Base State
++ Cell values are editable and read each time you run *update* command.
++ Members' names in the margin are not editable.
++ **Reminder**: *Base state* is the state of debts **before** running the create command and naturally does not need editing.
 
 ## Under the hood
 *GEM* uses [excelize](https://github.com/qax-os/excelize) to create and edit the spreadsheets.
