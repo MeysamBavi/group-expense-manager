@@ -1,12 +1,39 @@
 # GEM: Group Expense Manager
-A CLI program in Go for managing group expenses in spreadsheets 
+A CLI program in Go for managing group expenses in spreadsheets
 
 ## What does it solve?
-When you are in group of friends, coworkers etc. and constantly lending and borrowing money by paying the group expenses, figuring out *who-owes-how-much-to-whom* can be cumbersome. *GEM* solves this problem by **providing an organized spreadsheet** to put everything at one place and make you free of any calculation. 
+When you are in group of friends, coworkers etc. and constantly lending and borrowing money by paying the group expenses, figuring out *who-owes-how-much-to-whom* can be cumbersome. *GEM* solves this problem by **providing an organized spreadsheet** to put everything at one place and make you free of any calculation.
 
 ## What does it do?
 In the spreadsheet provided by *GEM* you only need to enter the group **expenses and transactions** and the rest is handled; The debt between each two members is shown in a matrix and the **minimum transactions needed for settlement** are calculated.  
 The initial state of your group **doesn't need to be even**. You can enter the current *base state* of the group; which is the current debt between each two members. This information will be used in later calculations.
+
+## What do you mean by 'organized spreadsheet'?
+In the very first moment, you give the names and card numbers of the group members to *GEM*, and it gives you back a spreadsheet, consisting of six **sheets**:
+
+### Members
+**Members** sheet contains the initial information you passed to program. Its main use is looking up someone's card number.
+
+### Expenses
+**Expenses** sheet contains the list of all expenses. You add a new row every time somebody pays for something.  
+Each expense has a payer; The person who paid for the expense. Each member has a *share weight* associated with that expense, showing how much of it is their share.  
+*share weight* should be a non-negative integer or a boolean value (true is equivalent to 1, false to 0). A zero *share weight* means that member is not included in the expenses.  
+*Share Amount* is calculated via an Excel formula based on total amount, sum of *share weight*s and the member's *share weight*.
+
+### Transactions
+**Transactions** sheet contains the list of all transactions. To state that you have paid some of your debts to the group, add a new row.  
+Each transaction has a *receiver*. The amount of transaction will be reduced from your overall debt and the debt state between you and receiver will be updated.
+
+### Debt Matrix
+**Debt Matrix** sheet contains the debt state between each two members. This matrix is calculated based on *expenses* *transactions* and *base state* **only** when you run the *update* command.  
+For each cell, the person in the row should pay the person in the column. Only the positive values are shown in the matrix.
+
+### Settlements
+**Settlements** sheet the minimum transactions needed for settling up. This list is calculated based on *debt matrix* and **only** when you run the *update* command.
+
+### Base State
+**Base State** sheet contains the debt state between each two members, before starting to use *GEM*. You can easily migrate to *GEM* by filling this matrix if you have been using a different system.
+
 
 ## How do I use it?
 Download the suitable binary for your system from [here](https://github.com/MeysamBavi/group-expense-manager/releases/latest). Create a spreadsheet by the **create** command.
@@ -54,7 +81,7 @@ This command will update the *debt matrix* and *settlement transactions*.
 + *Settlements* are **fully regenerated** with each *update* command and existing values are **ignored**.
 
 #### Base State
-+ Cell values are editable and read each time you run *update* command.
++ Cell values are editable and read each time you run the *update* command.
 + Members' names in the margin are not editable.
 + **Reminder**: *Base state* is the state of debts **before** running the create command and naturally does not need editing.
 
