@@ -614,16 +614,16 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 				return
 			}
 
-			theTime, err := model.ParseTime(cells[0].Value)
-			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 0)))
+			theTime, timeErr := model.ParseTime(cells[0].Value)
+			fatalIfNotNil(CellErrorOf(timeErr, t.SheetName, t.GetCell(rowNumber, 0)))
 
 			title := cells[1].Value
 
 			payer := cells[2].Value
 			requireMemberPresence(members, payer)
 
-			amount, err := model.ParseAmount(cells[3].Value)
-			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 3)))
+			amount, amountErr := model.ParseAmount(cells[3].Value)
+			fatalIfNotNil(CellErrorOf(amountErr, t.SheetName, t.GetCell(rowNumber, 3)))
 
 			ex := &model.Expense{
 				Title:     title,
@@ -634,8 +634,18 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 
 			var shares []model.Share
 			for i := 4; i < t.ColumnCount; i += 2 {
-				weight, err := strconv.Atoi(cells[i].Value)
-				fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, i)))
+				weightStr := strings.TrimSpace(cells[i].Value)
+				var weight int
+				if b, err := strconv.ParseBool(weightStr); err == nil {
+					if b {
+						weight = 1
+					} else {
+						weight = 0
+					}
+				} else {
+					weight, err = strconv.Atoi(weightStr)
+					fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, i)))
+				}
 
 				memberName := members.RequireMemberByIndex((i - 4) / 2).Name
 				shares = append(shares, model.Share{
