@@ -36,25 +36,29 @@ For each cell, the person in the row should pay the person in the column. Only t
 
 
 ## How do I use it?
-Download the suitable binary for your system from [here](https://github.com/MeysamBavi/group-expense-manager/releases/latest). Create a spreadsheet by the **create** command.
+Download the suitable binary for your system from [here](https://github.com/MeysamBavi/group-expense-manager/releases/latest). Create a spreadsheet by the **create** command:
 
 ```
 gem create -o my-sheet-name.xlsx
 ```
 
-Then you need to enter each member's name and card number. You can also pass the members' information in a `.csv` file.
+Then you need to enter each member's name and card number. You can also pass the members' information in a `.csv` file like this:
 
 ```
 gem create -o my-sheet-name.xlsx -f m.csv
 ```
 
-And that's it. Enter the group expenses and transactions and whenever you need, run the **update** command.
+And that's it. The spreadsheet is ready for entering the expenses and transactions.  
+After adding a few expenses or transactions, to calculate the debts, run the **update** command.
 
 ```
 gem update my-sheet-name.xlsx --overwrite
 ```
 
-This command will update the *debt matrix* and *settlement transactions*.
+This command will update the *debt matrix* and *settlement transactions* and overwrite the result on the same file. It calculates the debts based on **all** the expenses and transactions (and the *base state*).  
+This cycle is basically how you use *GEM*; Create the spreadsheet once, add some expenses and transactions, update the debts, add more expenses and transactions, update the debts again and so on.  
+
+You can run `gem help [command name]` to get all the details about a command; like its flags.
 
 ### What is editable?
 + Generally the structure of tables, including all headers are fixed and not editable.
