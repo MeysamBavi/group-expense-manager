@@ -63,7 +63,7 @@ This command will update the *debt matrix* and *settlement transactions* and ove
 
 This cycle is basically how you use *GEM*; Create the spreadsheet once, add some expenses and transactions, update the debts, add more expenses and transactions, update the debts again and so on.
 
-You can run `gem help [command name]` to get all the details about a command, like its flags.
+Use `gem [command] --help` for more information about a command, like its flags.
 
 ## What can I edit in the spreadsheet?
 
