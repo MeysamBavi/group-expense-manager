@@ -9,7 +9,6 @@ import (
 	"github.com/MeysamBavi/group-expense-manager/internal/sheet/table"
 	"github.com/xuri/excelize/v2"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -634,18 +633,8 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 
 			var shares []model.Share
 			for i := 4; i < t.ColumnCount; i += 2 {
-				weightStr := strings.TrimSpace(cells[i].Value)
-				var weight int
-				if b, err := strconv.ParseBool(weightStr); err == nil {
-					if b {
-						weight = 1
-					} else {
-						weight = 0
-					}
-				} else {
-					weight, err = strconv.Atoi(weightStr)
-					fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, i)))
-				}
+				weight, err := model.ParseShareWeight(cells[i].Value)
+				fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, i)))
 
 				memberName := members.RequireMemberByIndex((i - 4) / 2).Name
 				shares = append(shares, model.Share{
