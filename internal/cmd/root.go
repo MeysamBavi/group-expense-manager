@@ -10,8 +10,9 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "gem",
-	Short: "Spreadsheet based program for managing group expenses",
+	Use:     "gem",
+	Short:   "Spreadsheet based program for managing group expenses",
+	Version: "v1.1.0",
 }
 
 func init() {
