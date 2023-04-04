@@ -472,7 +472,7 @@ func initializeTransactions(m *Manager) {
 				time.Local)).String()
 			cells[1].Value = m.members.RequireMemberByIndex(0).Name
 			cells[2].Value = m.members.RequireMemberByIndex(1).Name
-			cells[3].Value = 223000
+			cells[3].Value = 0
 			cells[3].Style = newInt(m.getStyle(moneyStyle))
 		},
 		ColumnWidth: 18,
@@ -511,9 +511,9 @@ func initializeExpenses(m *Manager) {
 				0,
 				0,
 				time.Local)).String()
-			cells[1].Value = "bandages"
+			cells[1].Value = "example"
 			cells[2].Value = m.members.RequireMemberByIndex(0).Name
-			cells[3].Value = 623000
+			cells[3].Value = 0
 			cells[3].Style = newInt(m.getStyle(moneyStyle))
 			totalAmountCell = m.expensesLeftTable.GetCell(rowNumber, 3)
 		},

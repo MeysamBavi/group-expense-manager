@@ -42,8 +42,8 @@ func newCreateCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Creates a new spreadsheet by taking members information",
-		Long: `Creates a new spreadsheet to be used. The members' names and card numbers need to be entered one by one or passed in a csv file.
-Format of every row in the csv file should be "name,cardNumber"`,
+		Long: `Creates a new spreadsheet. The members' names and card numbers need to be passed in a csv file or entered one by one after a prompt.
+Format of every row in the csv file should be <name>,<cardNumber>`,
 		Example: "create -f list.csv",
 		Run:     run,
 	}
@@ -131,12 +131,12 @@ func getMembersFromFile(file string) *store.MemberStore {
 func getMembersFromStdin() *store.MemberStore {
 	members := store.NewMemberStore()
 
-	fmt.Println("Enter member's name and their card number followed by a space. Press enter for next member.")
+	fmt.Println("Enter member's name and their card number, separated by a space. Press enter for the next member.")
 	fmt.Println("If names or card numbers contain spaces, enclose them in \"\".")
 	fmt.Println("End the process by entering an empty line.")
 
 	scanner := bufio.NewScanner(os.Stdin)
-	r := regexp.MustCompile("^((\"[\\w ]+\")|(\\w+))\\s+((\"[-\\w ]+\")|([-\\w]+))$")
+	lineExp := regexp.MustCompile("^((\"[\\w ]+\")|(\\w+))\\s+((\"[-\\w ]+\")|([-\\w]+))$")
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -144,9 +144,9 @@ func getMembersFromStdin() *store.MemberStore {
 			break
 		}
 
-		groups := r.FindStringSubmatch(line)
+		groups := lineExp.FindStringSubmatch(line)
 		if groups == nil {
-			fmt.Println("You input does not match the specified format. Try again.")
+			fmt.Println("Your input does not match the specified format. Try again.")
 			continue
 		}
 

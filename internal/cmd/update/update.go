@@ -25,7 +25,7 @@ func newUpdateCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update file-name",
 		Short: "Updates the debt matrix",
-		Long:  "Updates the debt matrix based on expenses, transactions and base state",
+		Long:  "Updates the debt matrix and settlements based on expenses, transactions and base state",
 		Args: func(_ *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("no arguments passed as file name")
@@ -48,7 +48,7 @@ func newUpdateCommand() *cobra.Command {
 		"short-log",
 		"s",
 		false,
-		"logs loaded data in a short format. does not log expenses and transactions",
+		"logs the loaded data from spreadsheet in a short format (does not log expenses and transactions)",
 	)
 
 	cmd.Flags().BoolVarP(
@@ -56,7 +56,7 @@ func newUpdateCommand() *cobra.Command {
 		"long-log",
 		"l",
 		false,
-		"logs loaded data in a long format. logs expenses and transactions",
+		"logs loaded data in a long format including expenses and transactions",
 	)
 
 	return cmd
