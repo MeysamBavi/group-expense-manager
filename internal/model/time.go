@@ -21,6 +21,27 @@ type Time interface {
 	fmt.Stringer
 }
 
+func ParseTime(value string) (Time, error) {
+	g, errG := parseGregorian(value)
+	if errG == nil {
+		year := g.Year()
+		if year >= 2000 {
+			return g, nil
+		}
+	}
+
+	p, errP := parsePersian(value)
+	if errP == nil {
+		return p, nil
+	}
+
+	if errG == nil {
+		return g, nil
+	}
+
+	return nil, fmt.Errorf("time value %q does not match any layout:\n%v\n%v", value, errG, errP)
+}
+
 type gregorian struct {
 	time.Time
 }
@@ -33,19 +54,21 @@ func (g *gregorian) String() string {
 	return g.Format("2006/01/02 15:04")
 }
 
-func ParseTime(value string) (Time, error) {
+func parseGregorian(value string) (*gregorian, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return &gregorian{}, nil
 	}
+	var firstError error
 	for _, layout := range layouts {
 		if result, err := time.ParseInLocation(layout, value, time.Local); err == nil {
 			return &gregorian{result}, nil
-
+		} else if firstError == nil {
+			firstError = err
 		}
 	}
 
-	return nil, fmt.Errorf("time value %q does not match any layout", value)
+	return nil, fmt.Errorf("could not parse %q as gregorian date: %w", value, firstError)
 }
 
 func TimeOfGregorian(t time.Time) Time {
