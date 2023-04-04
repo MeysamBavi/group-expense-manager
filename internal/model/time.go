@@ -94,7 +94,7 @@ type persian struct {
 }
 
 func (p *persian) String() string {
-	return p.Format("yyyy/MM/dd hh:mm")
+	return p.Format("yyyy/MM/dd HH:mm")
 }
 
 const (
