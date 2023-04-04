@@ -2,6 +2,9 @@ package model
 
 import (
 	"fmt"
+	ptime "github.com/yaa110/go-persian-calendar"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -47,4 +50,80 @@ func ParseTime(value string) (Time, error) {
 
 func TimeOfGregorian(t time.Time) Time {
 	return &gregorian{t}
+}
+
+type persian struct {
+	ptime.Time
+}
+
+func (p *persian) String() string {
+	return p.Format("yyyy/MM/dd hh:mm")
+}
+
+const (
+	dayRE    = "(?P<day>\\d{1,2})"
+	monthRE  = "(?P<month>\\d{1,2})"
+	yearRE   = "(?P<year>\\d{4})"
+	hourRE   = "(?P<hour>\\d{1,2})"
+	minuteRE = "(?P<minute>\\d{1,2})"
+)
+
+var persianLayouts = []*regexp.Regexp{
+	regexp.MustCompile(fmt.Sprintf("%s/%s/%s %s:%s", yearRE, monthRE, dayRE, hourRE, minuteRE)),
+	regexp.MustCompile(fmt.Sprintf("%s:%s %s/%s/%s", hourRE, minuteRE, yearRE, monthRE, dayRE)),
+	regexp.MustCompile(fmt.Sprintf("%s/%s/%s", yearRE, monthRE, dayRE)),
+	regexp.MustCompile(fmt.Sprintf("%s/%s/%s", yearRE, monthRE, dayRE)),
+	regexp.MustCompile(fmt.Sprintf("%s-%s-%s", yearRE, monthRE, dayRE)),
+	regexp.MustCompile(fmt.Sprintf("%s %s %s", yearRE, monthRE, dayRE)),
+}
+
+func parsePersian(str string) (*persian, error) {
+	var firstError error
+	for _, re := range persianLayouts {
+		result, err := parsePersianWithLayout(str, re)
+		if err == nil {
+			return result, nil
+		}
+		if firstError == nil {
+			firstError = err
+		}
+	}
+
+	return nil, fmt.Errorf("could not parse %q as persian date: %w", str, firstError)
+}
+
+func parsePersianWithLayout(str string, re *regexp.Regexp) (*persian, error) {
+	var day, month, year, hour, minute int
+	type parsableField struct {
+		value      *int
+		validRange [2]int
+	}
+	m := map[string]*parsableField{
+		"day":    {value: &day, validRange: [2]int{1, 31}},
+		"month":  {value: &month, validRange: [2]int{1, 12}},
+		"year":   {value: &year, validRange: [2]int{100, 9999}},
+		"hour":   {value: &hour, validRange: [2]int{0, 23}},
+		"minute": {value: &minute, validRange: [2]int{0, 59}},
+	}
+	names := re.SubexpNames()
+	result := re.FindStringSubmatch(str)
+	if result == nil {
+		return nil, fmt.Errorf("%q does not match %q", str, re.String())
+	}
+	for i, name := range names {
+		if name == "" {
+			continue
+		}
+		value, err := strconv.Atoi(result[i])
+		if err != nil {
+			return nil, fmt.Errorf("could not parse %q as int: %w", result[i], err)
+		}
+		theRange := m[name].validRange
+		if value > theRange[1] || value < theRange[0] {
+			return nil, fmt.Errorf("value %d is not in range %v", value, theRange)
+		}
+		*m[name].value = value
+	}
+
+	return &persian{ptime.Date(year, ptime.Month(month), day, hour, minute, 0, 0, time.Local)}, nil
 }
