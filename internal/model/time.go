@@ -53,7 +53,7 @@ func ParseTime(value string) (Time, error) {
 		return g, nil
 	}
 
-	return nil, fmt.Errorf("time value %q does not match any layout:\n%v\n%v", value, errG, errP)
+	return nil, fmt.Errorf("time value %q cannot be parsed:\n\t%v\n\t%v", value, errG, errP)
 }
 
 type gregorian struct {
@@ -82,7 +82,7 @@ func parseGregorian(value string) (*gregorian, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("could not parse %q as gregorian date: %w", value, firstError)
+	return nil, fmt.Errorf("cannot not parse %q as gregorian date: %w", value, firstError)
 }
 
 func TimeOfGregorian(t time.Time) Time {
@@ -119,21 +119,27 @@ var persianLayouts = []*regexp.Regexp{
 }
 
 func parsePersian(str string) (*persian, error) {
-	var firstError error
+	var mainError *persianParseError
 	for _, re := range persianLayouts {
 		result, err := parsePersianWithLayout(str, re)
 		if err == nil {
 			return result, nil
 		}
-		if firstError == nil {
-			firstError = err
+
+		if mainError == nil || err.priority > mainError.priority {
+			mainError = err
 		}
 	}
 
-	return nil, fmt.Errorf("could not parse %q as persian date: %w", str, firstError)
+	return nil, fmt.Errorf("cannot not parse %q as persian date: %w", str, mainError.err)
 }
 
-func parsePersianWithLayout(str string, re *regexp.Regexp) (*persian, error) {
+type persianParseError struct {
+	err      error
+	priority int
+}
+
+func parsePersianWithLayout(str string, re *regexp.Regexp) (*persian, *persianParseError) {
 	var day, month, year, hour, minute int
 	type parsableField struct {
 		value      *int
@@ -149,7 +155,7 @@ func parsePersianWithLayout(str string, re *regexp.Regexp) (*persian, error) {
 	names := re.SubexpNames()
 	result := re.FindStringSubmatch(str)
 	if result == nil {
-		return nil, fmt.Errorf("%q does not match %q", str, re.String())
+		return nil, &persianParseError{fmt.Errorf("%q does not match %q", str, re.String()), 0}
 	}
 	for i, name := range names {
 		if name == "" {
@@ -157,11 +163,11 @@ func parsePersianWithLayout(str string, re *regexp.Regexp) (*persian, error) {
 		}
 		value, err := strconv.Atoi(result[i])
 		if err != nil {
-			return nil, fmt.Errorf("could not parse %q as int: %w", result[i], err)
+			return nil, &persianParseError{fmt.Errorf("cannot not parse %q as int: %w", result[i], err), 1}
 		}
 		theRange := m[name].validRange
 		if value > theRange[1] || value < theRange[0] {
-			return nil, fmt.Errorf("value %d is not in range %v", value, theRange)
+			return nil, &persianParseError{fmt.Errorf("value %d is not in range %v", value, theRange), 2}
 		}
 		*m[name].value = value
 	}
