@@ -14,7 +14,6 @@ var layouts = [...]string{
 	"15:4 2006/1/2",
 	"2006/1/2",
 	"2006-1-2",
-	"2006 1 2",
 
 	// possible auto format results:
 	"1/2/2006 15:4",
@@ -106,16 +105,12 @@ const (
 )
 
 var persianLayouts = []*regexp.Regexp{
-	regexp.MustCompile(fmt.Sprintf("^%s/%s/%s %s:%s$", yearRE, monthRE, dayRE, hourRE, minuteRE)),
-	regexp.MustCompile(fmt.Sprintf("^%s:%s %s/%s/%s$", hourRE, minuteRE, yearRE, monthRE, dayRE)),
-	regexp.MustCompile(fmt.Sprintf("^%s/%s/%s %s:%s$", dayRE, monthRE, yearRE, hourRE, minuteRE)),
-	regexp.MustCompile(fmt.Sprintf("^%s:%s %s/%s/%s$", hourRE, minuteRE, dayRE, monthRE, yearRE)),
-	regexp.MustCompile(fmt.Sprintf("^%s/%s/%s$", yearRE, monthRE, dayRE)),
-	regexp.MustCompile(fmt.Sprintf("^%s-%s-%s$", yearRE, monthRE, dayRE)),
-	regexp.MustCompile(fmt.Sprintf("^%s %s %s$", yearRE, monthRE, dayRE)),
-	regexp.MustCompile(fmt.Sprintf("^%s/%s/%s$", dayRE, monthRE, yearRE)),
-	regexp.MustCompile(fmt.Sprintf("^%s-%s-%s$", dayRE, monthRE, yearRE)),
-	regexp.MustCompile(fmt.Sprintf("^%s %s %s$", dayRE, monthRE, yearRE)),
+	regexp.MustCompile(fmt.Sprintf("^%s[-/]%s[-/]%s %s:%s$", yearRE, monthRE, dayRE, hourRE, minuteRE)),
+	regexp.MustCompile(fmt.Sprintf("^%s:%s %s[-/]%s[-/]%s$", hourRE, minuteRE, yearRE, monthRE, dayRE)),
+	regexp.MustCompile(fmt.Sprintf("^%s[-/]%s[-/]%s %s:%s$", dayRE, monthRE, yearRE, hourRE, minuteRE)),
+	regexp.MustCompile(fmt.Sprintf("^%s:%s %s[-/]%s[-/]%s$", hourRE, minuteRE, dayRE, monthRE, yearRE)),
+	regexp.MustCompile(fmt.Sprintf("^%s[-/]%s[-/]%s$", yearRE, monthRE, dayRE)),
+	regexp.MustCompile(fmt.Sprintf("^%s[-/]%s[-/]%s$", dayRE, monthRE, yearRE)),
 }
 
 func parsePersian(str string) (*persian, error) {
