@@ -589,7 +589,7 @@ func loadMembers(t *table.Table) *store.MemberStore {
 				Name:       strings.TrimSpace(cells[0].Value),
 				CardNumber: strings.TrimSpace(cells[1].Value),
 			})
-			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 0)))
+			fatalIfNotNil(log.CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 0)))
 		},
 		IncludeHeader:   false,
 		UnknownRowCount: true,
@@ -604,7 +604,7 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 		RowReader: func(rowNumber int, cells []*table.RCell) {
 			if rowNumber == -1 {
 				for i := 4; i < t.ColumnCount; i += 2 {
-					requireMemberValidity(members, cells[i].Value, (i-4)/2)
+					requireMemberValidity(members, cells[i].Value, (i-4)/2, t.SheetName, t.GetCell(rowNumber, i))
 				}
 				return
 			}
@@ -614,15 +614,15 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 			}
 
 			theTime, timeErr := model.ParseTime(cells[0].Value)
-			fatalIfNotNil(CellErrorOf(timeErr, t.SheetName, t.GetCell(rowNumber, 0)))
+			fatalIfNotNil(log.CellErrorOf(timeErr, t.SheetName, t.GetCell(rowNumber, 0)))
 
 			title := cells[1].Value
 
 			payer := cells[2].Value
-			requireMemberPresence(members, payer)
+			requireMemberPresence(members, payer, t.SheetName, t.GetCell(rowNumber, 2))
 
 			amount, amountErr := model.ParseAmount(cells[3].Value)
-			fatalIfNotNil(CellErrorOf(amountErr, t.SheetName, t.GetCell(rowNumber, 3)))
+			fatalIfNotNil(log.CellErrorOf(amountErr, t.SheetName, t.GetCell(rowNumber, 3)))
 
 			ex := &model.Expense{
 				Title:     title,
@@ -634,7 +634,7 @@ func loadExpenses(t *table.Table, members *store.MemberStore) []*model.Expense {
 			var shares []model.Share
 			for i := 4; i < t.ColumnCount; i += 2 {
 				weight, err := model.ParseShareWeight(cells[i].Value)
-				fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, i)))
+				fatalIfNotNil(log.CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, i)))
 
 				memberName := members.RequireMemberByIndex((i - 4) / 2).Name
 				shares = append(shares, model.Share{
@@ -659,16 +659,16 @@ func loadTransactions(t *table.Table, members *store.MemberStore) []*model.Trans
 	t.ReadRows(table.ReadRowsParams{
 		RowReader: func(rowNumber int, cells []*table.RCell) {
 			theTime, err := model.ParseTime(cells[0].Value)
-			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 0)))
+			fatalIfNotNil(log.CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 0)))
 
 			receiver := cells[1].Value
-			requireMemberPresence(members, receiver)
+			requireMemberPresence(members, receiver, t.SheetName, t.GetCell(rowNumber, 1))
 
 			payer := cells[2].Value
-			requireMemberPresence(members, payer)
+			requireMemberPresence(members, payer, t.SheetName, t.GetCell(rowNumber, 2))
 
 			amount, err := model.ParseAmount(cells[3].Value)
-			fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 3)))
+			fatalIfNotNil(log.CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, 3)))
 
 			transactions = append(transactions, &model.Transaction{
 				Time:         theTime,
@@ -692,15 +692,15 @@ func loadBaseState(t *table.Table, members *store.MemberStore) [][]model.Amount 
 		RowReader: func(rowNumber int, cells []*table.RCell) {
 			if rowNumber == -1 {
 				for i := 0; i < members.Count(); i++ {
-					requireMemberValidity(members, cells[i+1].Value, i)
+					requireMemberValidity(members, cells[i+1].Value, i, t.SheetName, t.GetCell(rowNumber, i+1))
 				}
 				return
 			}
-			requireMemberValidity(members, cells[0].Value, rowNumber)
+			requireMemberValidity(members, cells[0].Value, rowNumber, t.SheetName, t.GetCell(rowNumber, 0))
 
 			for i := 0; i < members.Count(); i++ {
 				amount, err := model.ParseAmount(cells[i+1].Value)
-				fatalIfNotNil(CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, i+1)))
+				fatalIfNotNil(log.CellErrorOf(err, t.SheetName, t.GetCell(rowNumber, i+1)))
 				baseState[rowNumber][i] = amount
 			}
 		},
@@ -726,15 +726,15 @@ func loadMetadata(t *table.Table) *style.Theme {
 	return theme
 }
 
-func requireMemberValidity(members *store.MemberStore, memberName string, index int) {
+func requireMemberValidity(members *store.MemberStore, memberName string, index int, sheetName, cell string) {
 	if !members.IsValid(memberName, index) {
-		log.FatalErrorByCaller(fmt.Errorf("found no member with name %q and index %d", memberName, index))
+		log.FatalErrorByCaller(log.CellErrorOf(fmt.Errorf("found no member with name %q and index %d", memberName, index), sheetName, cell))
 	}
 }
 
-func requireMemberPresence(members *store.MemberStore, memberName string) {
+func requireMemberPresence(members *store.MemberStore, memberName string, sheetName, cell string) {
 	if !members.IsPresent(memberName) {
-		log.FatalErrorByCaller(fmt.Errorf("found no member with name %q", memberName))
+		log.FatalErrorByCaller(log.CellErrorOf(fmt.Errorf("found no member with name %q", memberName), sheetName, cell))
 	}
 }
 

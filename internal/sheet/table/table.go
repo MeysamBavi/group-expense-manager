@@ -17,7 +17,13 @@ type Table struct {
 
 func (t *Table) fatalIfNotNil(err error) {
 	if err != nil {
-		log.FatalErrorByCaller(fmt.Errorf("%w: in %q", err, t.SheetName))
+		log.FatalErrorByCaller(log.SheetErrorOf(err, t.SheetName))
+	}
+}
+
+func (t *Table) fatalIfNotNilWithCell(err error, cell string) {
+	if err != nil {
+		log.FatalErrorByCaller(log.CellErrorOf(err, t.SheetName, cell))
 	}
 }
 
@@ -98,15 +104,15 @@ func (t *Table) writeRowCells(row int, cells []*WCell, multiplier int) {
 		t.fatalIfNotNil(err)
 
 		err = t.File.SetCellValue(t.SheetName, cell, cells[i].Value)
-		t.fatalIfNotNil(err)
+		t.fatalIfNotNilWithCell(err, cell)
 
 		err = t.File.SetCellFormula(t.SheetName, cell, cells[i].Formula)
-		t.fatalIfNotNil(err)
+		t.fatalIfNotNilWithCell(err, cell)
 
 		if cells[i].Style != nil {
 			style := *cells[i].Style
 			err = t.File.SetCellStyle(t.SheetName, cell, cell, style)
-			t.fatalIfNotNil(err)
+			t.fatalIfNotNilWithCell(err, cell)
 		}
 	}
 }
@@ -173,16 +179,18 @@ func (t *Table) readRowCells(row int, cells []*RCell) {
 		cell := t.GetCell(row, i)
 
 		formula, err := t.File.GetCellFormula(t.SheetName, cell)
-		t.fatalIfNotNil(err)
+		t.fatalIfNotNilWithCell(err, cell)
 		cells[i].Formula = formula
 
 		var value string
+		err = nil
 		if formula != "" {
 			value, err = t.File.CalcCellValue(t.SheetName, cell)
-		} else {
+		}
+		if formula == "" || err != nil {
 			value, err = t.File.GetCellValue(t.SheetName, cell)
 		}
-		t.fatalIfNotNil(err)
+		t.fatalIfNotNilWithCell(err, cell)
 		cells[i].Value = value
 	}
 }
